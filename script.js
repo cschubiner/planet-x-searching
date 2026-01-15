@@ -1334,7 +1334,7 @@ $(() => {
     // Prevent default to avoid conflicts with browser scrolling
     event.preventDefault();
     
-    const $badge = $(event.target);
+    const $badge = $(event.currentTarget);
     touchDraggedElement = $badge.get(0);
     
     // Create a visual clone for dragging
