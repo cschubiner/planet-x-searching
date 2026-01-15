@@ -5,4 +5,8 @@
 An online alternative to the player sheet for the board game
 [The Search for Planet X][game link].
 
+## Play Online
+
+**[Play the game here!](https://cschubiner.github.io/planet-x-searching/)**
+
 [game link]: https://searchforplanetx.com/
