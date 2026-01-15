@@ -1322,6 +1322,81 @@ $(() => {
     dragEvent.dataTransfer.setData("text/plain", $badge.getId());
     dragEvent.effectAllowed = "move";
   });
+  
+  // Add touch event support for mobile/iPad
+  let touchDraggedElement = null;
+  let touchDraggedClone = null;
+  
+  $("[draggable]").on("touchstart", (event) => {
+    const $badge = $(event.target);
+    touchDraggedElement = $badge.get(0);
+    
+    // Create a visual clone for dragging
+    touchDraggedClone = $badge.clone();
+    touchDraggedClone.css({
+      position: "fixed",
+      pointerEvents: "none",
+      zIndex: 10000,
+      opacity: 0.8,
+    });
+    $("body").append(touchDraggedClone);
+    
+    const touch = event.originalEvent.touches[0];
+    touchDraggedClone.css({
+      left: touch.clientX - touchDraggedClone.width() / 2,
+      top: touch.clientY - touchDraggedClone.height() / 2,
+    });
+  });
+  
+  $("body").on("touchmove", (event) => {
+    if (!touchDraggedElement) return;
+    event.preventDefault();
+    
+    const touch = event.originalEvent.touches[0];
+    if (touchDraggedClone) {
+      touchDraggedClone.css({
+        left: touch.clientX - touchDraggedClone.width() / 2,
+        top: touch.clientY - touchDraggedClone.height() / 2,
+      });
+    }
+    
+    // Find the drop zone under the touch point
+    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+    const $zone = $(elementUnderTouch).closest(`.${dropzoneClass}`);
+    
+    // Update visual feedback
+    $(`.${dropzoneClass}`).removeClass("bg-secondary-subtle");
+    if ($zone.length > 0 && allowDrop($zone)) {
+      $zone.addClass("bg-secondary-subtle");
+    }
+  });
+  
+  $("body").on("touchend", (event) => {
+    if (!touchDraggedElement) return;
+    
+    // Remove the clone
+    if (touchDraggedClone) {
+      touchDraggedClone.remove();
+      touchDraggedClone = null;
+    }
+    
+    const touch = event.originalEvent.changedTouches[0];
+    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+    const $zone = $(elementUnderTouch).closest(`.${dropzoneClass}`);
+    
+    // Remove all visual feedback
+    $(`.${dropzoneClass}`).removeClass("bg-secondary-subtle");
+    
+    if ($zone.length > 0 && allowDrop($zone)) {
+      // Move the badge to the drop zone
+      $zone.append($(touchDraggedElement));
+      // Trigger dragend to update the start button state
+      $(touchDraggedElement).trigger("dragend");
+    }
+    
+    touchDraggedElement = null;
+  });
+  
   function allowDrop($zone) {
     return $zone.getId() === notInPlayId || $zone.children().length === 0;
   }
