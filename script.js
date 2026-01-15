@@ -1353,6 +1353,103 @@ $(() => {
       $zone.append($(`#${badgeId}`));
     },
   });
+
+  // Touch support for mobile devices
+  let touchDragState = null;
+
+  function getDropzoneAtPoint(x, y) {
+    const dropzones = $(`.${dropzoneClass}`).toArray();
+    for (const zone of dropzones) {
+      const rect = zone.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return $(zone);
+      }
+    }
+    return null;
+  }
+
+  $("[draggable]").on({
+    touchstart: (event) => {
+      const $badge = $(event.target).closest("[draggable]");
+      if ($badge.length === 0) return;
+
+      const touch = event.originalEvent.touches[0];
+      const rect = $badge[0].getBoundingClientRect();
+
+      // Create a clone for visual feedback
+      const $clone = $badge.clone();
+      $clone.attr("id", "touch-drag-clone");
+      $clone.css({
+        position: "fixed",
+        left: rect.left,
+        top: rect.top,
+        zIndex: 1000,
+        opacity: 0.8,
+        pointerEvents: "none",
+      });
+      $("body").append($clone);
+
+      touchDragState = {
+        $badge,
+        $clone,
+        offsetX: touch.clientX - rect.left,
+        offsetY: touch.clientY - rect.top,
+        $currentZone: null,
+      };
+
+      $badge.css("opacity", 0.4);
+      event.preventDefault();
+    },
+    touchmove: (event) => {
+      if (!touchDragState) return;
+
+      const touch = event.originalEvent.touches[0];
+      const { $clone, offsetX, offsetY } = touchDragState;
+
+      // Move clone with touch
+      $clone.css({
+        left: touch.clientX - offsetX,
+        top: touch.clientY - offsetY,
+      });
+
+      // Highlight dropzone under touch
+      const $zone = getDropzoneAtPoint(touch.clientX, touch.clientY);
+
+      // Remove highlight from previous zone
+      if (touchDragState.$currentZone && (!$zone || $zone[0] !== touchDragState.$currentZone[0])) {
+        touchDragState.$currentZone.removeClass("bg-secondary-subtle");
+      }
+
+      // Add highlight to current zone if allowed
+      if ($zone && allowDrop($zone)) {
+        $zone.addClass("bg-secondary-subtle");
+        touchDragState.$currentZone = $zone;
+      } else {
+        touchDragState.$currentZone = null;
+      }
+
+      event.preventDefault();
+    },
+    touchend: (event) => {
+      if (!touchDragState) return;
+
+      const { $badge, $clone, $currentZone } = touchDragState;
+
+      // Remove clone
+      $clone.remove();
+      $badge.css("opacity", "");
+
+      // Drop into zone if valid
+      if ($currentZone && allowDrop($currentZone)) {
+        $currentZone.removeClass("bg-secondary-subtle");
+        $currentZone.append($badge);
+      }
+
+      touchDragState = null;
+      event.preventDefault();
+    },
+  });
+
   // initialize difficulty choice
   $("#difficulty-group").append(
     BootstrapHtml.radioButtonGroup(
