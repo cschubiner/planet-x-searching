@@ -1498,7 +1498,7 @@ $(() => {
           value = players
             .sort((a, b) => a.player - b.player)
             .map(({ color }) => color);
-          if (value.length < 2) invalid = true;
+          if (value.length < 1) invalid = true;
         } else {
           $(`input[name="${name}"]`).forEach(($input) => {
             if ($input.prop("checked")) {
