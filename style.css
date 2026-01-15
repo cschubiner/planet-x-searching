@@ -133,3 +133,20 @@ textarea {
   /* Exactly enough to fix the survey objects with the perfect padding. */
   min-width: 268px;
 }
+
+/* Text color for purple player */
+.text-purple {
+  color: var(--bs-purple) !important;
+}
+
+/* Time track section */
+#time-track-section {
+  padding: 0.5rem;
+  background-color: var(--bs-light);
+  border-radius: 0.375rem;
+}
+
+#time-track-display .badge {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+}

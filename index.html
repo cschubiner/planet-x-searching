@@ -346,6 +346,44 @@
                 </div>
               </div>
             </div>
+            <div id="theories-section" class="row mb-3">
+              <div class="col">
+                <div id="theories-header" class="row mb-2">
+                  <div class="col-auto">
+                    <h3>Theory Tracking</h3>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="hide-theories-btn"
+                      class="btn btn-sm btn-outline-danger"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                </div>
+                <div id="theories" class="table-responsive">
+                  <table
+                    id="theories-table"
+                    class="table table-bordered table-hover align-middle"
+                  >
+                    <thead>
+                      <tr>
+                        <th scope="col" class="small-col">Player</th>
+                        <th scope="col" class="small-col">Sector</th>
+                        <th scope="col">Object</th>
+                        <th scope="col" class="small-col">Revealed</th>
+                        <th scope="col" class="small-col">Correct</th>
+                      </tr>
+                    </thead>
+                    <tbody id="theories-body"></tbody>
+                  </table>
+                </div>
+                <div class="text-secondary small">
+                  Track your theories here. Use the iOS app to verify if correct.
+                </div>
+              </div>
+            </div>
             <div id="research-notes-info" class="row">
               <div class="col">
                 <div id="research-notes-header" class="row mb-2">
@@ -381,6 +419,13 @@
           </div>
           <div class="col-lg-6 order-lg-1">
             <h3>Move Notes</h3>
+            <div id="time-track-section" class="mb-3">
+              <div class="row gx-2 mb-2 align-items-center">
+                <div class="col-auto"><strong>Time Track:</strong></div>
+                <div id="time-track-display" class="col"></div>
+              </div>
+              <div id="current-turn-display" class="text-muted small"></div>
+            </div>
             <div class="row gx-2 mb-2">
               <div class="col-auto col-form-label">Filter by player:</div>
               <div id="player-move-filters" class="col"></div>
