@@ -1328,6 +1328,12 @@ $(() => {
   let touchDraggedClone = null;
   
   $("[draggable]").on("touchstart", (event) => {
+    const touches = event.originalEvent.touches;
+    if (!touches || touches.length === 0) return;
+    
+    // Prevent default to avoid conflicts with browser scrolling
+    event.preventDefault();
+    
     const $badge = $(event.target);
     touchDraggedElement = $badge.get(0);
     
@@ -1341,7 +1347,7 @@ $(() => {
     });
     $("body").append(touchDraggedClone);
     
-    const touch = event.originalEvent.touches[0];
+    const touch = touches[0];
     touchDraggedClone.css({
       left: touch.clientX - touchDraggedClone.width() / 2,
       top: touch.clientY - touchDraggedClone.height() / 2,
@@ -1350,9 +1356,13 @@ $(() => {
   
   $("body").on("touchmove", (event) => {
     if (!touchDraggedElement) return;
+    
+    const touches = event.originalEvent.touches;
+    if (!touches || touches.length === 0) return;
+    
     event.preventDefault();
     
-    const touch = event.originalEvent.touches[0];
+    const touch = touches[0];
     if (touchDraggedClone) {
       touchDraggedClone.css({
         left: touch.clientX - touchDraggedClone.width() / 2,
@@ -1362,6 +1372,8 @@ $(() => {
     
     // Find the drop zone under the touch point
     const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!elementUnderTouch) return;
+    
     const $zone = $(elementUnderTouch).closest(`.${dropzoneClass}`);
     
     // Update visual feedback
@@ -1374,24 +1386,30 @@ $(() => {
   $("body").on("touchend", (event) => {
     if (!touchDraggedElement) return;
     
+    const touches = event.originalEvent.changedTouches;
+    if (!touches || touches.length === 0) return;
+    
     // Remove the clone
     if (touchDraggedClone) {
       touchDraggedClone.remove();
       touchDraggedClone = null;
     }
     
-    const touch = event.originalEvent.changedTouches[0];
+    const touch = touches[0];
     const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
-    const $zone = $(elementUnderTouch).closest(`.${dropzoneClass}`);
     
     // Remove all visual feedback
     $(`.${dropzoneClass}`).removeClass("bg-secondary-subtle");
     
-    if ($zone.length > 0 && allowDrop($zone)) {
-      // Move the badge to the drop zone
-      $zone.append($(touchDraggedElement));
-      // Trigger dragend to update the start button state
-      $(touchDraggedElement).trigger("dragend");
+    if (elementUnderTouch) {
+      const $zone = $(elementUnderTouch).closest(`.${dropzoneClass}`);
+      
+      if ($zone.length > 0 && allowDrop($zone)) {
+        // Move the badge to the drop zone
+        $zone.append($(touchDraggedElement));
+        // Trigger dragend to update the start button state
+        $(touchDraggedElement).trigger("dragend");
+      }
     }
     
     touchDraggedElement = null;
