@@ -59,7 +59,7 @@ const MODE_SETTINGS = {
       "comet": { count: 2, points: 3 },
     },
     research: ["A", "B", "C", "D", "E", "F"],
-    conferences: ["X1"],
+    conferences: [{ name: "X1", threshold: 12 }],
   },
   expert: {
     rules: [
@@ -109,7 +109,10 @@ const MODE_SETTINGS = {
       "comet": { count: 2, points: 3 },
     },
     research: ["A", "B", "C", "D", "E", "F"],
-    conferences: ["X1", "X2"],
+    conferences: [
+      { name: "X1", threshold: 10 },
+      { name: "X2", threshold: 22 },
+    ],
   },
 };
 const DIFFICULTY_START_HINTS = {
@@ -120,6 +123,267 @@ const DIFFICULTY_START_HINTS = {
 };
 
 const currentGameSettings = {};
+
+const STORAGE_KEY = "planetXGameState";
+
+// Global auto-save function (debounced)
+let autoSaveTimeout = null;
+function triggerAutoSave() {
+  if (!currentGameSettings.mode) return; // Game not started
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(() => {
+    saveGameState();
+  }, 500);
+}
+
+/** Saves the current game state to localStorage */
+function saveGameState() {
+  if (!currentGameSettings.mode) return; // Game not started yet
+
+  const state = {
+    settings: { ...currentGameSettings },
+    timestamp: Date.now(),
+    hints: {},
+    moves: [],
+    researchNotes: {},
+    sectorNotes: {},
+    scoreCalc: {},
+  };
+
+  // Save hint states
+  $(".hint-btn").forEach(($btn) => {
+    const hintName = $btn.attr("hintName");
+    if (hintName && $btn.hasClass("active")) {
+      state.hints[hintName] = $btn.attr("hint"); // "yes" or "no"
+    }
+  });
+
+  // Save move data
+  $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
+    const moveId = $row.getId();
+    const moveNum = Number($row.attr("moveNum"));
+
+    // Get player
+    const player = $row.find(`input[name="${moveId}-player"]:checked`).attr("value");
+
+    // Get action
+    const $actionSelect = $row.find(`#${moveId}-action`);
+    const action = $actionSelect.val();
+
+    // Get action args based on action type
+    let actionArgs = {};
+    if (action === "survey") {
+      actionArgs.object = $row.find(`input[name="${moveId}-action-survey-object"]:checked`).attr("value");
+      actionArgs.startSector = $row.find(`#${moveId}-action-survey-sector-start`).val();
+      actionArgs.endSector = $row.find(`#${moveId}-action-survey-sector-end`).val();
+    } else if (action === "target") {
+      actionArgs.sector = $row.find(`[action="target"] select`).val();
+    } else if (action === "research") {
+      actionArgs.area = $row.find(`input[name="${moveId}-action-research-area"]:checked`).attr("value");
+    }
+
+    // Get notes
+    const notes = $row.find("[contenteditable]").text();
+
+    if (player || action || notes) {
+      state.moves.push({ moveNum, player, action, actionArgs, notes });
+    }
+  });
+
+  // Save research/conference notes
+  $("#research-body tr").forEach(($row) => {
+    const rowId = $row.attr("id") || $row.find("th").text();
+    const $selects = $row.find("select");
+    const notes = $row.find("[contenteditable]").text();
+    if ($selects.length > 0 || notes) {
+      state.researchNotes[rowId] = {
+        selects: $selects.map((i, el) => $(el).val()).get(),
+        notes,
+      };
+    }
+  });
+
+  // Save sector notes
+  $("#hints-notes-row [contenteditable]").forEach(($note, index) => {
+    const text = $note.text();
+    if (text) {
+      state.sectorNotes[index + 1] = text;
+    }
+  });
+
+  // Save score calculator values
+  $("#score-table input").forEach(($input) => {
+    const id = $input.attr("id");
+    const val = $input.val();
+    if (val) {
+      state.scoreCalc[id] = val;
+    }
+  });
+
+  // Save theories
+  state.theories = [];
+  $(".theory-row").forEach(($row) => {
+    const theoryId = $row.getId();
+    const player = $row.find(`input[name="${theoryId}-player"]:checked`).attr("value");
+    const sector = $row.find(`#${theoryId}-sector`).val();
+    const object = $row.find(`input[name="${theoryId}-object"]:checked`).attr("value");
+    const revealed = $row.find(`#${theoryId}-revealed`).prop("checked");
+    const correct = $row.find(`#${theoryId}-correct`).prop("checked");
+
+    if (player || sector || object || revealed || correct) {
+      state.theories.push({ player, sector, object, revealed, correct });
+    }
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/** Loads game state from localStorage */
+function loadGameState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return null;
+
+  try {
+    return JSON.parse(saved);
+  } catch (e) {
+    console.error("Failed to parse saved game state:", e);
+    return null;
+  }
+}
+
+/** Clears saved game state */
+function clearGameState() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+/** Restores game state after game has started */
+function restoreGameState(state) {
+  if (!state) return;
+
+  // Restore hints
+  for (const [hintName, hint] of Object.entries(state.hints || {})) {
+    const $btn = $(`#${hintName}-${hint}`);
+    if ($btn.length) {
+      $btn.trigger("activate");
+    }
+  }
+
+  // Restore moves
+  for (const move of state.moves || []) {
+    // Make sure we have enough rows
+    while (movesCounter <= move.moveNum) {
+      addMoveRow();
+    }
+
+    const moveId = `move${move.moveNum}`;
+    const $row = $(`#${moveId}`);
+
+    if (move.player) {
+      $row.find(`input[name="${moveId}-player"][value="${move.player}"]`).prop("checked", true).trigger("change");
+    }
+
+    if (move.action) {
+      $row.find(`#${moveId}-action`).val(move.action).trigger("change");
+
+      // Restore action args
+      if (move.action === "survey" && move.actionArgs) {
+        if (move.actionArgs.object) {
+          $row.find(`input[name="${moveId}-action-survey-object"][value="${move.actionArgs.object}"]`).prop("checked", true).trigger("change");
+        }
+        if (move.actionArgs.startSector) {
+          $row.find(`#${moveId}-action-survey-sector-start`).val(move.actionArgs.startSector).trigger("change");
+        }
+        // End sector needs to be set after start sector change handler runs
+        setTimeout(() => {
+          if (move.actionArgs.endSector) {
+            $row.find(`#${moveId}-action-survey-sector-end`).val(move.actionArgs.endSector).trigger("change");
+          }
+        }, 50);
+      } else if (move.action === "target" && move.actionArgs?.sector) {
+        $row.find(`[action="target"] select`).val(move.actionArgs.sector);
+      } else if (move.action === "research" && move.actionArgs?.area) {
+        $row.find(`input[name="${moveId}-action-research-area"][value="${move.actionArgs.area}"]`).prop("checked", true).trigger("input");
+      }
+    }
+
+    if (move.notes) {
+      $row.find("[contenteditable]").text(move.notes);
+    }
+  }
+
+  // Restore research notes
+  setTimeout(() => {
+    for (const [rowId, data] of Object.entries(state.researchNotes || {})) {
+      let $row = $(`#${rowId}`);
+      if (!$row.length) {
+        // Try finding by header text
+        $row = $(`#research-body tr`).filter((i, el) => $(el).find("th").text().trim() === rowId);
+      }
+      if ($row.length) {
+        const $selects = $row.find("select");
+        (data.selects || []).forEach((val, i) => {
+          if ($selects.eq(i).length && val) {
+            $selects.eq(i).val(val);
+          }
+        });
+        if (data.notes) {
+          $row.find("[contenteditable]").text(data.notes);
+        }
+      }
+    }
+
+    // Restore sector notes
+    for (const [sector, text] of Object.entries(state.sectorNotes || {})) {
+      const $notes = $("#hints-notes-row [contenteditable]");
+      const index = parseInt(sector) - 1;
+      if ($notes.eq(index).length) {
+        $notes.eq(index).text(text);
+      }
+    }
+
+    // Restore score calculator
+    for (const [id, val] of Object.entries(state.scoreCalc || {})) {
+      $(`#${id}`).val(val).trigger("change");
+    }
+
+    // Restore theories
+    const theories = state.theories || [];
+    for (let i = 0; i < theories.length; i++) {
+      const theory = theories[i];
+      // Make sure we have enough theory rows
+      while (theoriesCounter <= i) {
+        const playerColors = state.settings.playerColors;
+        const numSectors = MODE_SETTINGS[state.settings.mode].numSectors;
+        addTheoryRow(playerColors, numSectors);
+      }
+
+      const theoryId = `theory${i}`;
+      const $row = $(`#${theoryId}`);
+
+      if (theory.player) {
+        $row.find(`input[name="${theoryId}-player"][value="${theory.player}"]`).prop("checked", true);
+      }
+      if (theory.sector) {
+        $row.find(`#${theoryId}-sector`).val(theory.sector);
+      }
+      if (theory.object) {
+        $row.find(`input[name="${theoryId}-object"][value="${theory.object}"]`).prop("checked", true).trigger("change");
+      }
+      if (theory.revealed) {
+        $row.find(`#${theoryId}-revealed`).prop("checked", true);
+      }
+      if (theory.correct) {
+        $row.find(`#${theoryId}-correct`).prop("checked", true);
+      }
+    }
+
+    // Update time track after restoration
+    if (typeof updateTimeTrack === "function") {
+      // updateTimeTrack is defined inside addMoveRow scope, so we need to trigger a change
+      $(`.${MOVE_ROW_CLASS}`).first().find("select, input").first().trigger("change");
+    }
+  }, 100);
+}
 
 String.prototype.toTitleCase = function () {
   return this.split(" ")
@@ -479,6 +743,89 @@ function toggleImageWhiteVariant(selector) {
   });
 }
 
+let theoriesCounter = 0;
+
+/** Initializes the theories tracking table */
+function initializeTheoriesTable(playerColors, numSectors) {
+  // Add initial empty row
+  addTheoryRow(playerColors, numSectors);
+}
+
+/** Adds a row to the theories table */
+function addTheoryRow(playerColors, numSectors) {
+  const theoryNum = theoriesCounter++;
+  const theoryId = `theory${theoryNum}`;
+
+  const theoryObjects = ["asteroid", "comet", "dwarf-planet", "gas-cloud"];
+
+  $("#theories-body").append(
+    $("<tr>", { id: theoryId, class: "theory-row", new: "true" }).append(
+      // Player column
+      $("<td>").append(
+        BootstrapHtml.radioButtonGroup(
+          `${theoryId}-player`,
+          playerColors.map((color) => ({
+            value: color,
+            attrs: { theory: theoryId },
+            accent: PLAYER_COLORS[color],
+            content: color.charAt(0).toUpperCase(),
+          }))
+        )
+      ),
+      // Sector column
+      $("<td>").append(
+        BootstrapHtml.dropdown(
+          Array.fromRange(numSectors, (i) => i + 1),
+          { id: `${theoryId}-sector`, onlyLabels: true, theory: theoryId }
+        )
+      ),
+      // Object column
+      $("<td>").append(
+        BootstrapHtml.radioButtonGroup(
+          `${theoryId}-object`,
+          theoryObjects.map((obj) => ({
+            value: obj,
+            attrs: { theory: theoryId },
+            content: createObjectImage(obj),
+          })),
+          { elementAccent: "secondary" }
+        )
+      ),
+      // Revealed column
+      $("<td>", { class: "text-center" }).append(
+        $("<input>", {
+          type: "checkbox",
+          id: `${theoryId}-revealed`,
+          class: "form-check-input theory-checkbox",
+          theory: theoryId,
+        })
+      ),
+      // Correct column
+      $("<td>", { class: "text-center" }).append(
+        $("<input>", {
+          type: "checkbox",
+          id: `${theoryId}-correct`,
+          class: "form-check-input theory-checkbox",
+          theory: theoryId,
+        })
+      )
+    )
+  );
+
+  // Toggle white image variant for object selection
+  toggleImageWhiteVariant(`input[name="${theoryId}-object"]`);
+
+  // Add new row when this one is changed
+  $(`[theory="${theoryId}"]`).on("change", (event) => {
+    const $row = $(`#${theoryId}`);
+    if ($row.attr("new")) {
+      $row.attr("new", null);
+      addTheoryRow(playerColors, numSectors);
+    }
+    triggerAutoSave();
+  });
+}
+
 /** Starts the game by initializing the page with the given game settings. */
 function startGame(gameSettings) {
   const { mode, playerColors, difficulty } = gameSettings;
@@ -696,9 +1043,9 @@ function startGame(gameSettings) {
         $("<td>").append(BootstrapHtml.editable({ placeholder: "Notes" }))
       )
     ),
-    settings.conferences.map((letter) =>
-      $("<tr>").append(
-        $("<th>", { scope: "row" }).text(letter),
+    settings.conferences.map((conf) =>
+      $("<tr>", { id: `conference-${conf.name}-row`, "data-threshold": conf.threshold }).append(
+        $("<th>", { scope: "row" }).html(`${conf.name} <span class="text-muted small">(at time ${conf.threshold})</span>`),
         $("<td>").append(
           $("<div>", { class: "row gx-2" }).append(
             $("<div>", { class: "col-auto col-form-label" }).text("Planet X &"),
@@ -711,6 +1058,9 @@ function startGame(gameSettings) {
       )
     )
   );
+
+  // initialize theories table
+  initializeTheoriesTable(playerColors, numSectors);
 
   // initialize player move filters
   $("#player-move-filters").append(
@@ -982,6 +1332,85 @@ function addMoveRow() {
     }
   }
 
+  function updateTimeTrack() {
+    // Calculate cumulative time for each player from move rows
+    const playerTimes = {};
+    for (const color of currentGameSettings.playerColors) {
+      playerTimes[color] = 0;
+    }
+
+    $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
+      const moveId = $row.getId();
+      // Find selected player
+      const player = $row
+        .find(`input[name="${moveId}-player"]:checked`)
+        .attr("value");
+      if (player == null) return;
+
+      // Get the time cost for this move
+      const $timeCostNum = $row.find(`#${moveId}-time-num`);
+      const timeCost = parseInt($timeCostNum.text()) || 0;
+
+      if (player in playerTimes) {
+        playerTimes[player] += timeCost;
+      }
+    });
+
+    // Find player furthest behind (lowest time = next turn)
+    let minTime = Infinity;
+    let nextPlayer = null;
+    for (const color of currentGameSettings.playerColors) {
+      if (playerTimes[color] < minTime) {
+        minTime = playerTimes[color];
+        nextPlayer = color;
+      }
+    }
+
+    // Update display
+    const $display = $("#time-track-display");
+    $display.empty();
+
+    for (const color of currentGameSettings.playerColors) {
+      const time = playerTimes[color];
+      const isNext = color === nextPlayer;
+      const accent = PLAYER_COLORS[color];
+      const $badge = $("<span>", {
+        class: `badge bg-${accent} me-2 ${isNext ? "border border-dark border-2" : ""}`,
+      }).text(`${color.charAt(0).toUpperCase()}: ${time}`);
+      $display.append($badge);
+    }
+
+    // Update current turn indicator
+    const $turnDisplay = $("#current-turn-display");
+    if (nextPlayer) {
+      $turnDisplay.html(
+        `Next turn: <strong class="text-${PLAYER_COLORS[nextPlayer]}">${nextPlayer.toTitleCase()}</strong> (lowest time: ${minTime})`
+      );
+    } else {
+      $turnDisplay.text("");
+    }
+
+    // Check for conference triggers
+    const maxTime = Math.max(...Object.values(playerTimes));
+    const conferences = MODE_SETTINGS[currentGameSettings.mode].conferences;
+    for (const conf of conferences) {
+      const $confRow = $(`#conference-${conf.name}-row`);
+      const triggered = maxTime >= conf.threshold;
+      // Highlight conference row if triggered
+      $confRow.toggleClass("table-warning", triggered);
+      // Update the header text to show threshold
+      const $header = $confRow.find("th");
+      if (triggered && !$header.text().includes("TRIGGERED")) {
+        $header.html(`${conf.name} <span class="badge bg-warning text-dark">TRIGGERED @ ${conf.threshold}</span>`);
+      } else if (!triggered) {
+        $header.html(`${conf.name} <span class="text-muted small">(at time ${conf.threshold})</span>`);
+      }
+    }
+
+    // Auto-save on move changes
+    triggerAutoSave();
+  }
+
   // only includes the player and action selections (not notes)
   $(`[move="${moveId}"]`).on("change", (event) => {
     // if this is a new row, add another row since this one is now changed
@@ -1073,6 +1502,7 @@ function addMoveRow() {
     }
 
     updatePlayerResearches();
+    updateTimeTrack();
   });
 
   // when the action is changed, show its args
@@ -1190,6 +1620,7 @@ function addMoveRow() {
   // research args
   $(`input[name="${moveId}-action-research-area"]`).on("input", (event) => {
     updatePlayerResearches();
+    updateTimeTrack();
   });
 }
 
@@ -1498,7 +1929,7 @@ $(() => {
           value = players
             .sort((a, b) => a.player - b.player)
             .map(({ color }) => color);
-          if (value.length < 2) invalid = true;
+          if (value.length < 1) invalid = true;
         } else {
           $(`input[name="${name}"]`).forEach(($input) => {
             if ($input.prop("checked")) {
@@ -1518,16 +1949,27 @@ $(() => {
     const [invalid, settings] = getGameSettings();
     if (invalid) return;
 
+    // Clear any existing saved state since we're starting fresh
+    const isResume = event.isResume;
+    if (!isResume) {
+      clearGameState();
+    }
+
     startGame(settings);
+
+    // Use global auto-save
+    const autoSave = triggerAutoSave;
 
     // new game button
     $("#new-game-btn").on("click", (event) => {
       if (!confirm("Are you sure you want to start a new game?")) return;
+      clearGameState();
       location.href = getUrl();
     });
     // reset button
     $("#reset-btn").on("click", (event) => {
       if (!confirm("Are you sure you want to reset the game?")) return;
+      clearGameState();
       location.href = getUrl(currentGameSettings);
     });
 
@@ -1669,8 +2111,17 @@ $(() => {
             $(`#${hintName}-cell`).chooseClass(BG_COLOR_CLASSES, classKey);
           }
         }
+
+        // Auto-save after hint changes
+        autoSave();
       },
     });
+
+    // Auto-save on contenteditable changes (notes)
+    $(document).on("input", "[contenteditable]", autoSave);
+
+    // Auto-save on select changes (research topics)
+    $("#research-body select").on("change", autoSave);
 
     // final score calculator
     $("#score-table input").on("change", (event) => {
@@ -1688,6 +2139,7 @@ $(() => {
       // locating planet x points
       total += Number($("#locate-planet-x-points").val());
       $("#score-total").text(total);
+      autoSave();
     });
 
     // buttons to show/hide sections
@@ -1695,6 +2147,7 @@ $(() => {
       "logic-rules",
       "score-calculator",
       "starting-info",
+      "theories",
       "research-notes",
     ]) {
       $(`#${name}-header`).on("click", (event) => {
@@ -1758,6 +2211,69 @@ $(() => {
     checkStartButton();
   });
 
+  // Check for saved game state
+  const savedState = loadGameState();
+  if (savedState && savedState.settings) {
+    const savedDate = new Date(savedState.timestamp);
+    const timeAgo = formatTimeAgo(savedDate);
+
+    // Show resume game option
+    const $resumeDiv = $("<div>", {
+      id: "resume-game-prompt",
+      class: "alert alert-info mb-3",
+    }).append(
+      $("<strong>").text("Saved game found! "),
+      $("<span>").text(`(${savedState.settings.mode} mode, ${savedState.settings.playerColors.length} player(s), saved ${timeAgo})`),
+      $("<br>"),
+      $("<button>", {
+        type: "button",
+        class: "btn btn-primary btn-sm me-2 mt-2",
+        id: "resume-game-btn",
+      }).text("Resume Game"),
+      $("<button>", {
+        type: "button",
+        class: "btn btn-outline-secondary btn-sm mt-2",
+        id: "discard-save-btn",
+      }).text("Start Fresh")
+    );
+    $("#game-settings").before($resumeDiv);
+
+    $("#resume-game-btn").on("click", () => {
+      // Set up game settings from saved state
+      const settings = savedState.settings;
+
+      // Set mode
+      $(`input[name="${GAME_SETTINGS.mode}"][value="${settings.mode}"]`).prop("checked", true);
+
+      // Set player colors
+      for (let i = 0; i < settings.playerColors.length; i++) {
+        const color = settings.playerColors[i];
+        $(`#player-${i + 1}-color`).append($(`#${color}-player`));
+      }
+
+      // Set difficulty
+      $(`input[name="${GAME_SETTINGS.difficulty}"][value="${settings.difficulty}"]`).prop("checked", true);
+
+      // Remove prompt
+      $("#resume-game-prompt").remove();
+
+      // Start game with resume flag
+      const event = $.Event("click");
+      event.isResume = true;
+      $("#start-game-btn").trigger(event);
+
+      // Restore state after a short delay
+      setTimeout(() => {
+        restoreGameState(savedState);
+      }, 100);
+    });
+
+    $("#discard-save-btn").on("click", () => {
+      clearGameState();
+      $("#resume-game-prompt").remove();
+    });
+  }
+
   // initialize with the proper mode
   if (parseUrl()) {
     if (checkStartButton()) {
@@ -1766,3 +2282,13 @@ $(() => {
     }
   }
 });
+
+/** Format a date as "X minutes/hours/days ago" */
+function formatTimeAgo(date) {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minute(s) ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour(s) ago`;
+  return `${Math.floor(seconds / 86400)} day(s) ago`;
+}
