@@ -231,8 +231,70 @@
                   </div>
                 </div>
 
-                <!-- Step 7: Theories & Scoring -->
+                <!-- Step 7: Solo Mode (Playing with a Bot) -->
                 <div class="tutorial-step d-none" data-step="7">
+                  <h4><i class="bi bi-robot"></i> Solo Mode: Playing with a Bot</h4>
+                  <p>Want to play alone? <strong>Solo mode</strong> lets you play against an AI bot controlled by the official app!</p>
+
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Key Point:</strong> Solo mode is set up as a <strong>2-player game</strong> where the bot is the second player.
+                  </div>
+
+                  <h5><i class="bi bi-gear"></i> Setting Up Solo Mode:</h5>
+                  <ol>
+                    <li><strong>Choose TWO player colors</strong> in this app - one for you, one for the bot</li>
+                    <li><strong>In the official app:</strong> Select "Solo Game" mode (usually at the bottom of the screen)</li>
+                    <li><strong>Give the bot:</strong>
+                      <ul>
+                        <li>All 12 theory tokens from the bot's color</li>
+                        <li>12 additional tokens (face up) to verify the bot's choices</li>
+                      </ul>
+                    </li>
+                  </ol>
+
+                  <h5><i class="bi bi-play-circle"></i> Playing Solo Mode:</h5>
+                  <div class="card mb-3">
+                    <div class="card-body">
+                      <h6 class="card-title">On Your Turn:</h6>
+                      <p class="card-text small mb-0">Play normally - choose your action in the official app, record the results in this companion app.</p>
+                    </div>
+                  </div>
+                  <div class="card mb-3">
+                    <div class="card-body">
+                      <h6 class="card-title">On the Bot's Turn:</h6>
+                      <p class="card-text small">
+                        <strong>The official app will tell you what the bot does!</strong> The app automatically:
+                      </p>
+                      <ul class="small mb-0">
+                        <li>Chooses the bot's action (Survey, Target, Research, etc.)</li>
+                        <li>Shows you the details (which sectors, which object type, etc.)</li>
+                        <li>Submits theories (only when the bot knows it's correct!)</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <h5><i class="bi bi-pencil-square"></i> Recording Bot Actions:</h5>
+                  <p>In this companion app, <strong>track the bot's moves exactly like a regular player:</strong></p>
+                  <ul>
+                    <li>Select the bot's player color</li>
+                    <li>Record the action the app tells you the bot took</li>
+                    <li>Add any notes about what the bot might have learned</li>
+                  </ul>
+
+                  <div class="alert alert-warning">
+                    <i class="bi bi-trophy"></i>
+                    <strong>Winning Solo Mode:</strong> Try to locate Planet X before the bot does! The bot is smart and only submits theories it knows are correct.
+                  </div>
+
+                  <div class="alert alert-success">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>Pro Tip:</strong> Pay attention to when the bot submits theories - it means the bot has deduced that location with certainty!
+                  </div>
+                </div>
+
+                <!-- Step 8: Theories & Scoring -->
+                <div class="tutorial-step d-none" data-step="8">
                   <h4>Theories & Scoring</h4>
                   <p>Submit <strong>theories</strong> about object locations to score points!</p>
                   <h5>Points per correct theory:</h5>
@@ -246,8 +308,8 @@
                   <p>Use the <strong>Theory Tracking</strong> section to record your submitted theories!</p>
                 </div>
 
-                <!-- Step 8: Research & Conferences -->
-                <div class="tutorial-step d-none" data-step="8">
+                <!-- Step 9: Research & Conferences -->
+                <div class="tutorial-step d-none" data-step="9">
                   <h4>Research & Conferences</h4>
                   <h5>Research Topics</h5>
                   <p>There are 6 research topics (A-F). Each reveals a logic rule about 1-2 object types. Track which topics you've researched in the <strong>Research Notes</strong> section.</p>
@@ -261,8 +323,8 @@
                   <p>Conferences reveal information about Planet X's relationship to nearby objects!</p>
                 </div>
 
-                <!-- Step 9: Getting Started -->
-                <div class="tutorial-step d-none" data-step="9">
+                <!-- Step 10: Getting Started -->
+                <div class="tutorial-step d-none" data-step="10">
                   <h4>Ready to Play!</h4>
                   <div class="alert alert-success">
                     <h5><i class="bi bi-rocket-takeoff"></i> Quick Start Guide:</h5>
@@ -292,14 +354,14 @@
                     <i class="bi bi-arrow-left"></i> Previous
                   </button>
                   <div id="tutorial-progress">
-                    <span id="tutorial-step-current">1</span> / <span id="tutorial-step-total">9</span>
+                    <span id="tutorial-step-current">1</span> / <span id="tutorial-step-total">10</span>
                   </div>
                   <button type="button" class="btn btn-info" id="tutorial-next">
                     Next <i class="bi bi-arrow-right"></i>
                   </button>
                 </div>
                 <div class="progress mt-2" style="height: 4px;">
-                  <div class="progress-bar bg-info" id="tutorial-progress-bar" role="progressbar" style="width: 11.1%"></div>
+                  <div class="progress-bar bg-info" id="tutorial-progress-bar" role="progressbar" style="width: 10%"></div>
                 </div>
               </div>
             </div>
@@ -401,6 +463,17 @@
       <div id="board" class="container-fluid px-0 d-none">
         <div class="row mb-2">
           <div class="col">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h4 class="mb-0">Game Board</h4>
+              <div class="btn-group" role="group" aria-label="Undo/Redo controls">
+                <button type="button" id="undo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Undo (Ctrl+Z)">
+                  <i class="bi bi-arrow-counterclockwise"></i> Undo
+                </button>
+                <button type="button" id="redo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Redo (Ctrl+Y)">
+                  <i class="bi bi-arrow-clockwise"></i> Redo
+                </button>
+              </div>
+            </div>
             <div class="table-responsive position-relative">
               <table
                 id="hints-table"
