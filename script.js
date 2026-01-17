@@ -1080,6 +1080,13 @@ function startGame(gameSettings) {
 
   // initialize moves table
   addMoveRow();
+
+  // initialize circular board
+  // Use a small timeout to ensure the board container has proper dimensions
+  setTimeout(() => {
+    initializeCircularBoard(numSectors);
+    hookCircularBoardToHints();
+  }, 100);
 }
 
 const MOVE_ROW_CLASS = "move-row";
@@ -2382,3 +2389,310 @@ function initializeTutorial() {
 $(document).ready(function () {
   initializeTutorial();
 });
+
+// ========== Circular Board ==========
+let circularBoardState = {
+  numSectors: 12,
+  rotation: 0,
+  visibleSkyStart: 1,
+  showVisibleSky: true,
+  selectedSector: null,
+};
+
+/** Initialize the circular board */
+function initializeCircularBoard(numSectors) {
+  circularBoardState.numSectors = numSectors;
+  circularBoardState.rotation = 0;
+  circularBoardState.visibleSkyStart = 1;
+  circularBoardState.selectedSector = null;
+
+  const $board = $("#circular-board");
+
+  // Remove existing sectors
+  $board.find(".sector").remove();
+
+  // Calculate positioning
+  const boardSize = $board.width();
+  const radius = boardSize * 0.38; // Distance from center to sector centers
+  const sectorSize = numSectors <= 12 ? 50 : 45; // Smaller sectors for expert mode
+
+  // Generate sectors
+  for (let i = 1; i <= numSectors; i++) {
+    // Calculate position around the circle
+    // Start from top (12 o'clock) and go clockwise
+    const angle = ((i - 1) / numSectors) * 2 * Math.PI - Math.PI / 2;
+    const x = Math.cos(angle) * radius + boardSize / 2 - sectorSize / 2;
+    const y = Math.sin(angle) * radius + boardSize / 2 - sectorSize / 2;
+
+    const $sector = $("<div>", {
+      class: "sector unknown animate-in",
+      "data-sector": i,
+      css: {
+        left: `${x}px`,
+        top: `${y}px`,
+        animationDelay: `${(i - 1) * 0.05}s`,
+      },
+    }).append(
+      $("<span>", { class: "sector-number" }).text(i),
+      $("<div>", { class: "sector-content" }).append(
+        $("<i>", { class: "bi bi-question-lg" })
+      )
+    );
+
+    // Mark prime sectors (for comets)
+    if (isPrime(i)) {
+      $sector.addClass("prime-sector");
+    }
+
+    $board.append($sector);
+  }
+
+  // Show the board section
+  $("#circular-board-section").removeClass("d-none");
+
+  // Set up event handlers
+  setupCircularBoardEvents();
+
+  // Initial visible sky update
+  updateVisibleSky();
+
+  // Sync with any existing hint data
+  syncCircularBoardWithHints();
+}
+
+/** Set up event handlers for the circular board */
+function setupCircularBoardEvents() {
+  const $board = $("#circular-board");
+
+  // Sector hover - highlight adjacent sectors
+  $board.off("mouseenter", ".sector").on("mouseenter", ".sector", function () {
+    const sector = parseInt($(this).data("sector"));
+    const numSectors = circularBoardState.numSectors;
+
+    // Calculate adjacent sectors (wrapping around)
+    const prev = sector === 1 ? numSectors : sector - 1;
+    const next = sector === numSectors ? 1 : sector + 1;
+
+    // Highlight adjacent sectors
+    $(`.sector[data-sector="${prev}"], .sector[data-sector="${next}"]`).addClass(
+      "adjacent-highlight"
+    );
+  });
+
+  $board.off("mouseleave", ".sector").on("mouseleave", ".sector", function () {
+    $(".sector").removeClass("adjacent-highlight");
+  });
+
+  // Sector click - show info in center and select
+  $board.off("click", ".sector").on("click", ".sector", function () {
+    const sector = parseInt($(this).data("sector"));
+    const $sector = $(this);
+
+    // Toggle selection
+    if (circularBoardState.selectedSector === sector) {
+      // Deselect
+      $(".sector").removeClass("selected");
+      circularBoardState.selectedSector = null;
+      $("#center-info").removeClass("active");
+      $("#center-sun").show();
+    } else {
+      // Select this sector
+      $(".sector").removeClass("selected");
+      $sector.addClass("selected");
+      circularBoardState.selectedSector = sector;
+
+      // Update center info
+      const objectName = getSectorObjectName(sector);
+      $("#center-sector-num").text(`Sector ${sector}`);
+      $("#center-object-name").text(objectName);
+      $("#center-info").addClass("active");
+      $("#center-sun").hide();
+    }
+  });
+
+  // Rotation buttons
+  $("#rotate-board-left")
+    .off("click")
+    .on("click", function () {
+      circularBoardState.rotation -= 360 / circularBoardState.numSectors;
+      circularBoardState.visibleSkyStart--;
+      if (circularBoardState.visibleSkyStart < 1) {
+        circularBoardState.visibleSkyStart = circularBoardState.numSectors;
+      }
+      applyBoardRotation();
+      updateVisibleSky();
+    });
+
+  $("#rotate-board-right")
+    .off("click")
+    .on("click", function () {
+      circularBoardState.rotation += 360 / circularBoardState.numSectors;
+      circularBoardState.visibleSkyStart++;
+      if (circularBoardState.visibleSkyStart > circularBoardState.numSectors) {
+        circularBoardState.visibleSkyStart = 1;
+      }
+      applyBoardRotation();
+      updateVisibleSky();
+    });
+
+  // Toggle visible sky
+  $("#toggle-visible-sky")
+    .off("click")
+    .on("click", function () {
+      $(this).toggleClass("active");
+      circularBoardState.showVisibleSky = $(this).hasClass("active");
+      updateVisibleSky();
+    });
+}
+
+/** Apply rotation to the board */
+function applyBoardRotation() {
+  $("#circular-board")
+    .addClass("rotating")
+    .css("transform", `rotate(${circularBoardState.rotation}deg)`);
+
+  // Counter-rotate sector numbers so they stay upright
+  $(".sector-number").css(
+    "transform",
+    `translateX(-50%) rotate(${-circularBoardState.rotation}deg)`
+  );
+  $(".sector-content").css(
+    "transform",
+    `rotate(${-circularBoardState.rotation}deg)`
+  );
+}
+
+/** Update visible sky highlighting */
+function updateVisibleSky() {
+  const numSectors = circularBoardState.numSectors;
+  const visibleCount = numSectors / 2;
+  const start = circularBoardState.visibleSkyStart;
+
+  $(".sector").each(function () {
+    const sector = parseInt($(this).data("sector"));
+    let isVisible = false;
+
+    // Check if sector is in visible range
+    for (let i = 0; i < visibleCount; i++) {
+      const visibleSector = ((start - 1 + i) % numSectors) + 1;
+      if (sector === visibleSector) {
+        isVisible = true;
+        break;
+      }
+    }
+
+    if (circularBoardState.showVisibleSky) {
+      $(this).toggleClass("in-visible-sky", isVisible);
+      $(this).toggleClass("not-in-visible-sky", !isVisible);
+    } else {
+      $(this).removeClass("in-visible-sky not-in-visible-sky");
+    }
+  });
+}
+
+/** Get the confirmed object name for a sector */
+function getSectorObjectName(sector) {
+  const objects = [
+    "planet-x",
+    "truly-empty",
+    "gas-cloud",
+    "dwarf-planet",
+    "asteroid",
+    "comet",
+  ];
+
+  for (const object of objects) {
+    const hintName = `${object}-sector${sector}`;
+    const $yesBtn = $(`#${hintName}-yes`);
+    if ($yesBtn.length && $yesBtn.hasClass("active")) {
+      return object.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    }
+  }
+
+  return "Unknown";
+}
+
+/** Sync the circular board with the hints table */
+function syncCircularBoardWithHints() {
+  const numSectors = circularBoardState.numSectors;
+  const objects = [
+    "planet-x",
+    "truly-empty",
+    "gas-cloud",
+    "dwarf-planet",
+    "asteroid",
+    "comet",
+  ];
+
+  for (let sector = 1; sector <= numSectors; sector++) {
+    const $sector = $(`.sector[data-sector="${sector}"]`);
+    let confirmedObject = null;
+    let allRuledOut = true;
+    let hasAnyHint = false;
+
+    // Check each object for this sector
+    for (const object of objects) {
+      const hintName = `${object}-sector${sector}`;
+      const $yesBtn = $(`#${hintName}-yes`);
+      const $noBtn = $(`#${hintName}-no`);
+
+      if ($yesBtn.length && $yesBtn.hasClass("active")) {
+        confirmedObject = object;
+        hasAnyHint = true;
+        break;
+      }
+
+      if ($noBtn.length && $noBtn.hasClass("active")) {
+        hasAnyHint = true;
+      } else if ($yesBtn.length) {
+        // This object hasn't been ruled out
+        allRuledOut = false;
+      }
+    }
+
+    // Update sector appearance
+    $sector.removeClass("unknown confirmed ruled-out planet-x-found");
+
+    if (confirmedObject) {
+      if (confirmedObject === "planet-x") {
+        $sector.addClass("planet-x-found");
+      } else {
+        $sector.addClass("confirmed");
+      }
+
+      // Update sector content with object image
+      $sector.find(".sector-content").html(
+        $("<img>", {
+          src: `images/${confirmedObject}.png`,
+          alt: confirmedObject.replace(/-/g, " "),
+        })
+      );
+    } else if (hasAnyHint && allRuledOut) {
+      // All objects ruled out but nothing confirmed - should not happen in valid game
+      $sector.addClass("ruled-out");
+      $sector
+        .find(".sector-content")
+        .html($("<i>", { class: "bi bi-x-lg text-danger" }));
+    } else {
+      $sector.addClass("unknown");
+      $sector
+        .find(".sector-content")
+        .html($("<i>", { class: "bi bi-question-lg" }));
+    }
+  }
+
+  // Update center info if a sector is selected
+  if (circularBoardState.selectedSector) {
+    const objectName = getSectorObjectName(circularBoardState.selectedSector);
+    $("#center-object-name").text(objectName);
+  }
+}
+
+/** Hook into hint button clicks to sync the board */
+function hookCircularBoardToHints() {
+  // This will be called after hint buttons are set up
+  $(document).on("click", ".hint-btn", function () {
+    // Small delay to let the hint state update
+    setTimeout(syncCircularBoardWithHints, 50);
+  });
+}
