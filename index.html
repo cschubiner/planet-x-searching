@@ -40,8 +40,271 @@
       <div class="mb-2">
         <span class="h1">Planet X Searching</span>
         <span class="h6 fst-italic text-black text-opacity-50 ms-1">
-          (<a href="changelog.html" class="text-reset">v0.14</a>)
+          (<a href="changelog.html" class="text-reset">v0.15</a>)
         </span>
+        <button type="button" id="tutorial-btn" class="btn btn-outline-info btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#tutorial-modal">
+          <i class="bi bi-question-circle"></i> How to Play
+        </button>
+        <a href="RULES.md" target="_blank" class="btn btn-outline-secondary btn-sm ms-1">
+          <i class="bi bi-book"></i> Full Rules
+        </a>
+      </div>
+
+      <!-- Tutorial Modal -->
+      <div class="modal fade" id="tutorial-modal" tabindex="-1" aria-labelledby="tutorial-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+              <h5 class="modal-title" id="tutorial-modal-label">
+                <i class="bi bi-mortarboard"></i> Tutorial: How to Play
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <!-- Tutorial steps -->
+              <div id="tutorial-content">
+                <!-- Step 1: Introduction -->
+                <div class="tutorial-step" data-step="1">
+                  <h4>Welcome to Planet X Searching!</h4>
+                  <p class="lead">This is a <strong>companion app</strong> for the board game "The Search for Planet X".</p>
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Important:</strong> You still need the official iOS/Android app to play the game. This web app helps you track your notes, deductions, and game state.
+                  </div>
+                  <h5>What You'll Learn:</h5>
+                  <ul>
+                    <li>The goal of the game</li>
+                    <li>Available actions and their time costs</li>
+                    <li>How to use this companion app</li>
+                    <li>Tips for tracking your deductions</li>
+                  </ul>
+                </div>
+
+                <!-- Step 2: Game Overview -->
+                <div class="tutorial-step d-none" data-step="2">
+                  <h4>Game Overview</h4>
+                  <p>You are an astronomer searching for the mysterious <strong>Planet X</strong>. The sky is divided into sectors containing various objects:</p>
+                  <div class="row text-center mb-3">
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/planet-x.png" alt="Planet X" class="tutorial-object-img">
+                      <div class="small">Planet X</div>
+                    </div>
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/asteroid.png" alt="Asteroid" class="tutorial-object-img">
+                      <div class="small">Asteroid</div>
+                    </div>
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/comet.png" alt="Comet" class="tutorial-object-img">
+                      <div class="small">Comet</div>
+                    </div>
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/dwarf-planet.png" alt="Dwarf Planet" class="tutorial-object-img">
+                      <div class="small">Dwarf Planet</div>
+                    </div>
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/gas-cloud.png" alt="Gas Cloud" class="tutorial-object-img">
+                      <div class="small">Gas Cloud</div>
+                    </div>
+                    <div class="col-4 col-md-2 mb-2">
+                      <img src="images/truly-empty.png" alt="Truly Empty" class="tutorial-object-img">
+                      <div class="small">Truly Empty</div>
+                    </div>
+                  </div>
+                  <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Key Rule:</strong> Planet X always <em>appears</em> empty when you survey or target its sector!
+                  </div>
+                </div>
+
+                <!-- Step 3: Time Track -->
+                <div class="tutorial-step d-none" data-step="3">
+                  <h4>The Time Track</h4>
+                  <p>Every action costs <strong>time</strong> <img src="images/time.png" alt="time" class="tutorial-inline-img">. The player <strong>furthest behind</strong> always goes next.</p>
+                  <table class="table table-bordered">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Action</th>
+                        <th>Time Cost</th>
+                        <th>What It Does</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Survey</strong></td>
+                        <td>2-4 <img src="images/time.png" alt="time" class="tutorial-inline-img"></td>
+                        <td>Learn how many of an object type are in a range of sectors</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Target</strong></td>
+                        <td>4 <img src="images/time.png" alt="time" class="tutorial-inline-img"></td>
+                        <td>Learn exactly what's in one sector (limited: 2 per game)</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Research</strong></td>
+                        <td>1 <img src="images/time.png" alt="time" class="tutorial-inline-img"></td>
+                        <td>Learn a logic rule about object placement</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Locate Planet X</strong></td>
+                        <td>5 <img src="images/time.png" alt="time" class="tutorial-inline-img"></td>
+                        <td>Attempt to find Planet X and end the game!</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="alert alert-info">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>Tip:</strong> You cannot Research twice in a row!
+                  </div>
+                </div>
+
+                <!-- Step 4: Object Rules -->
+                <div class="tutorial-step d-none" data-step="4">
+                  <h4>Object Placement Rules</h4>
+                  <p>Each object follows specific rules that help you deduce locations:</p>
+                  <table class="table table-bordered">
+                    <tbody>
+                      <tr>
+                        <td><img src="images/comet.png" alt="Comet" class="tutorial-inline-img"> <strong>Comets</strong></td>
+                        <td>Only in prime sectors (2, 3, 5, 7, 11...)</td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/asteroid.png" alt="Asteroid" class="tutorial-inline-img"> <strong>Asteroids</strong></td>
+                        <td>Always adjacent to at least 1 other asteroid</td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/dwarf-planet.png" alt="Dwarf Planet" class="tutorial-inline-img"> <strong>Dwarf Planets</strong></td>
+                        <td>Never adjacent to Planet X</td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/gas-cloud.png" alt="Gas Cloud" class="tutorial-inline-img"> <strong>Gas Clouds</strong></td>
+                        <td>Always adjacent to at least 1 Truly Empty sector</td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/planet-x.png" alt="Planet X" class="tutorial-inline-img"> <strong>Planet X</strong></td>
+                        <td>Never adjacent to Dwarf Planet; appears empty</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Step 5: Using the Hints Table -->
+                <div class="tutorial-step d-none" data-step="5">
+                  <h4>Using the Hints Table</h4>
+                  <p>The <strong>Hints Table</strong> is your main deduction tool. Track what you learn about each sector:</p>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><i class="bi bi-check-circle text-success"></i> Green Check</h6>
+                          <p class="card-text small">Mark when you <strong>confirm</strong> an object is in a sector.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><i class="bi bi-x-circle text-danger"></i> Red X</h6>
+                          <p class="card-text small">Mark when you <strong>rule out</strong> an object from a sector.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="alert alert-success">
+                    <i class="bi bi-magic"></i>
+                    <strong>Auto-helper:</strong> When you confirm one object in a sector, the app automatically marks all other objects as "No" for that sector!
+                  </div>
+                </div>
+
+                <!-- Step 6: Tracking Moves -->
+                <div class="tutorial-step d-none" data-step="6">
+                  <h4>Tracking Moves</h4>
+                  <p>The <strong>Move Notes</strong> section helps you track each player's actions:</p>
+                  <ol>
+                    <li><strong>Select the player</strong> taking the action (by color)</li>
+                    <li><strong>Choose the action</strong> (Survey, Target, Research, Locate)</li>
+                    <li><strong>Fill in the details</strong> (which sectors, which object, etc.)</li>
+                    <li><strong>Add notes</strong> about what you learned</li>
+                  </ol>
+                  <div class="alert alert-info">
+                    <i class="bi bi-clock"></i>
+                    The <strong>Time Track display</strong> shows each player's current position. The player with the lowest time goes next!
+                  </div>
+                </div>
+
+                <!-- Step 7: Theories & Scoring -->
+                <div class="tutorial-step d-none" data-step="7">
+                  <h4>Theories & Scoring</h4>
+                  <p>Submit <strong>theories</strong> about object locations to score points!</p>
+                  <h5>Points per correct theory:</h5>
+                  <ul>
+                    <li><img src="images/asteroid.png" alt="Asteroid" class="tutorial-inline-img"> Asteroid: 2 points</li>
+                    <li><img src="images/comet.png" alt="Comet" class="tutorial-inline-img"> Comet: 3 points</li>
+                    <li><img src="images/gas-cloud.png" alt="Gas Cloud" class="tutorial-inline-img"> Gas Cloud: 4 points</li>
+                    <li><img src="images/dwarf-planet.png" alt="Dwarf Planet" class="tutorial-inline-img"> Dwarf Planet: 4 points (Standard) / 2 points (Expert)</li>
+                    <li><img src="images/planet-x.png" alt="Planet X" class="tutorial-inline-img"> First to Locate Planet X: 10 points</li>
+                  </ul>
+                  <p>Use the <strong>Theory Tracking</strong> section to record your submitted theories!</p>
+                </div>
+
+                <!-- Step 8: Research & Conferences -->
+                <div class="tutorial-step d-none" data-step="8">
+                  <h4>Research & Conferences</h4>
+                  <h5>Research Topics</h5>
+                  <p>There are 6 research topics (A-F). Each reveals a logic rule about 1-2 object types. Track which topics you've researched in the <strong>Research Notes</strong> section.</p>
+
+                  <h5>Conferences</h5>
+                  <p>When players reach certain time thresholds, <strong>conferences</strong> are triggered:</p>
+                  <ul>
+                    <li><strong>Standard Mode:</strong> X1 at time 12</li>
+                    <li><strong>Expert Mode:</strong> X1 at time 10, X2 at time 22</li>
+                  </ul>
+                  <p>Conferences reveal information about Planet X's relationship to nearby objects!</p>
+                </div>
+
+                <!-- Step 9: Getting Started -->
+                <div class="tutorial-step d-none" data-step="9">
+                  <h4>Ready to Play!</h4>
+                  <div class="alert alert-success">
+                    <h5><i class="bi bi-rocket-takeoff"></i> Quick Start Guide:</h5>
+                    <ol class="mb-0">
+                      <li><strong>Choose your mode</strong> (Standard: 12 sectors, Expert: 18 sectors)</li>
+                      <li><strong>Set up players</strong> by dragging color badges to player slots</li>
+                      <li><strong>Select difficulty</strong> (determines starting hints)</li>
+                      <li><strong>Click "Start Game"</strong></li>
+                      <li><strong>Use the official app</strong> to perform actions and get results</li>
+                      <li><strong>Record everything</strong> in this companion app!</li>
+                    </ol>
+                  </div>
+                  <div class="alert alert-info">
+                    <i class="bi bi-save"></i>
+                    <strong>Auto-Save:</strong> Your game is automatically saved. If you close the browser, you can resume where you left off!
+                  </div>
+                  <p class="text-center mt-3">
+                    <strong>Good luck finding Planet X!</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <div class="w-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <button type="button" class="btn btn-outline-secondary" id="tutorial-prev" disabled>
+                    <i class="bi bi-arrow-left"></i> Previous
+                  </button>
+                  <div id="tutorial-progress">
+                    <span id="tutorial-step-current">1</span> / <span id="tutorial-step-total">9</span>
+                  </div>
+                  <button type="button" class="btn btn-info" id="tutorial-next">
+                    Next <i class="bi bi-arrow-right"></i>
+                  </button>
+                </div>
+                <div class="progress mt-2" style="height: 4px;">
+                  <div class="progress-bar bg-info" id="tutorial-progress-bar" role="progressbar" style="width: 11.1%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="game-settings" class="container-fluid px-0 mb-3">
@@ -153,7 +416,7 @@
             <div id="logic-rules-section" class="row mb-2">
               <div class="col">
                 <div id="logic-rules-header" class="row mb-2">
-                  <div class="col-auto"><h3>Logic Rules</h3></div>
+                  <div class="col-auto"><h3>Logic Rules <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Quick reference for object placement rules. Each object follows specific rules that help you deduce its location."></i></h3></div>
                   <div class="col-auto">
                     <button
                       type="button"
@@ -183,7 +446,7 @@
             <div id="score-calculator-section" class="row mb-2">
               <div class="col">
                 <div id="score-calculator-header" class="row mb-2">
-                  <div class="col-auto"><h3>Final Score Calculator</h3></div>
+                  <div class="col-auto"><h3>Final Score Calculator <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Calculate your final score. Enter the number of correct theories for each object type and your Planet X bonus."></i></h3></div>
                   <div class="col-auto">
                     <button
                       type="button"
@@ -323,7 +586,7 @@
             <div id="starting-info-section" class="row mb-2">
               <div class="col">
                 <div id="starting-info-header" class="row mb-2">
-                  <div class="col-auto"><h3>Starting Information</h3></div>
+                  <div class="col-auto"><h3>Starting Information <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Record the starting hints the app gives you. Each hint tells you that a sector does NOT contain a specific object."></i></h3></div>
                   <div class="col-auto">
                     <button
                       type="button"
@@ -350,7 +613,7 @@
               <div class="col">
                 <div id="theories-header" class="row mb-2">
                   <div class="col-auto">
-                    <h3>Theory Tracking</h3>
+                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Mark them when revealed and whether they were correct to help calculate your score."></i></h3>
                   </div>
                   <div class="col-auto">
                     <button
@@ -388,7 +651,7 @@
               <div class="col">
                 <div id="research-notes-header" class="row mb-2">
                   <div class="col-auto">
-                    <h3>Research & Conference Notes</h3>
+                    <h3>Research & Conference Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track research topics (A-F) and conference info. Each research reveals rules about specific objects. Conferences give info about Planet X."></i></h3>
                   </div>
                   <div class="col-auto">
                     <button
@@ -418,7 +681,7 @@
             </div>
           </div>
           <div class="col-lg-6 order-lg-1">
-            <h3>Move Notes</h3>
+            <h3>Move Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track each player's actions and time costs. Select player, choose action, fill in details. The Time Track shows who goes next (lowest time)."></i></h3>
             <div id="time-track-section" class="mb-3">
               <div class="row gx-2 mb-2 align-items-center">
                 <div class="col-auto"><strong>Time Track:</strong></div>

@@ -2292,3 +2292,93 @@ function formatTimeAgo(date) {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour(s) ago`;
   return `${Math.floor(seconds / 86400)} day(s) ago`;
 }
+
+// ========== Tutorial Mode ==========
+const TUTORIAL_STORAGE_KEY = "planetXTutorialSeen";
+
+/** Initialize the tutorial modal functionality */
+function initializeTutorial() {
+  const $modal = $("#tutorial-modal");
+  const $steps = $(".tutorial-step");
+  const totalSteps = $steps.length;
+  let currentStep = 1;
+
+  // Update step total display
+  $("#tutorial-step-total").text(totalSteps);
+
+  function showStep(step) {
+    currentStep = step;
+
+    // Hide all steps, show current
+    $steps.addClass("d-none");
+    $(`.tutorial-step[data-step="${step}"]`).removeClass("d-none");
+
+    // Update progress display
+    $("#tutorial-step-current").text(step);
+
+    // Update progress bar
+    const progress = (step / totalSteps) * 100;
+    $("#tutorial-progress-bar").css("width", `${progress}%`);
+
+    // Update button states
+    $("#tutorial-prev").prop("disabled", step === 1);
+
+    // Change "Next" to "Finish" on last step
+    const $nextBtn = $("#tutorial-next");
+    if (step === totalSteps) {
+      $nextBtn.html('<i class="bi bi-check-lg"></i> Finish');
+      $nextBtn.removeClass("btn-info").addClass("btn-success");
+    } else {
+      $nextBtn.html('Next <i class="bi bi-arrow-right"></i>');
+      $nextBtn.removeClass("btn-success").addClass("btn-info");
+    }
+  }
+
+  // Navigation handlers
+  $("#tutorial-prev").on("click", () => {
+    if (currentStep > 1) {
+      showStep(currentStep - 1);
+    }
+  });
+
+  $("#tutorial-next").on("click", () => {
+    if (currentStep < totalSteps) {
+      showStep(currentStep + 1);
+    } else {
+      // Finish button clicked - close modal
+      bootstrap.Modal.getInstance($modal[0]).hide();
+      // Mark tutorial as seen
+      localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
+    }
+  });
+
+  // Reset to step 1 when modal opens
+  $modal.on("show.bs.modal", () => {
+    showStep(1);
+  });
+
+  // Initialize Bootstrap tooltips for section help icons
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach((tooltipTriggerEl) => {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
+  // Show tutorial automatically for first-time users
+  if (!localStorage.getItem(TUTORIAL_STORAGE_KEY)) {
+    // Add highlight to tutorial button
+    $("#tutorial-btn").addClass("tutorial-highlight");
+
+    // Remove highlight after first click or after 10 seconds
+    $("#tutorial-btn").one("click", function () {
+      $(this).removeClass("tutorial-highlight");
+    });
+    setTimeout(() => {
+      $("#tutorial-btn").removeClass("tutorial-highlight");
+    }, 10000);
+  }
+}
+
+// Initialize tutorial when document is ready
+$(document).ready(function () {
+  initializeTutorial();
+});
