@@ -855,6 +855,25 @@ function isPrime(num) {
   return true;
 }
 
+/**
+ * Calculate the wrapped position on the time track (1-based)
+ * @param {number} totalTime - Cumulative time total
+ * @param {number} trackSize - Size of the track (12 for standard, 18 for expert)
+ * @returns {number} Position on track (1 to trackSize)
+ * 
+ * Examples:
+ * - getTrackPosition(0, 12) => 12  (start at position 12)
+ * - getTrackPosition(11, 12) => 11
+ * - getTrackPosition(12, 12) => 12
+ * - getTrackPosition(13, 12) => 1
+ * - getTrackPosition(14, 12) => 2
+ */
+function getTrackPosition(totalTime, trackSize) {
+  if (totalTime === 0) return trackSize; // Position 12 or 18 at start
+  const position = totalTime % trackSize;
+  return position === 0 ? trackSize : position;
+}
+
 function getUrl(settings = {}) {
   const questionMarkIndex = document.URL.indexOf("?");
   let url =
@@ -1528,17 +1547,23 @@ function addMoveRow() {
       }
     }
 
-    // Update display
+    // Update display with both cumulative time and wrapped position
     const $display = $("#time-track-display");
     $display.empty();
+    
+    // Determine track size based on mode
+    const mode = currentGameSettings.mode;
+    const trackSize = mode === "standard" ? 12 : 18;
 
     for (const color of currentGameSettings.playerColors) {
       const time = playerTimes[color];
+      const position = getTrackPosition(time, trackSize);
       const isNext = color === nextPlayer;
       const accent = PLAYER_COLORS[color];
       const $badge = $("<span>", {
         class: `badge bg-${accent} me-2 ${isNext ? "border border-dark border-2" : ""}`,
-      }).text(`${color.charAt(0).toUpperCase()}: ${time}`);
+        title: `Cumulative time: ${time}, Track position: ${position}`,
+      }).text(`${color.charAt(0).toUpperCase()}: ${time} (pos ${position}/${trackSize})`);
       $display.append($badge);
     }
 

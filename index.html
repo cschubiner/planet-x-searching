@@ -805,12 +805,13 @@
             </div>
           </div>
           <div class="col-lg-6 order-lg-1">
-            <h3>Move Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track each player's actions and time costs. Select player, choose action, fill in details. The Time Track shows who goes next (lowest time)."></i></h3>
+            <h3>Move Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track each player's actions and time costs. Select player, choose action, fill in details. The Time Track shows cumulative time and track position (wraps at 12/18). Player with lowest cumulative time goes next."></i></h3>
             <div id="time-track-section" class="mb-3">
               <div class="row gx-2 mb-2 align-items-center">
                 <div class="col-auto"><strong>Time Track:</strong></div>
                 <div id="time-track-display" class="col"></div>
               </div>
+              <div class="text-muted small mb-2">Format: Cumulative Time (Position/TrackSize). Conferences trigger at cumulative time thresholds.</div>
               <div id="current-turn-display" class="text-muted small"></div>
             </div>
             <div class="row gx-2 mb-2">
