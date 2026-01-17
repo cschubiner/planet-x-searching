@@ -40,7 +40,7 @@
       <div class="mb-2">
         <span class="h1">Planet X Searching</span>
         <span class="h6 fst-italic text-black text-opacity-50 ms-1">
-          (<a href="changelog.html" class="text-reset">v0.15</a>)
+          (<a href="changelog.html" class="text-reset">v0.16</a>)
         </span>
         <button type="button" id="tutorial-btn" class="btn btn-outline-info btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#tutorial-modal">
           <i class="bi bi-question-circle"></i> How to Play
@@ -345,6 +345,57 @@
         <button type="button" id="reset-btn" class="btn btn-danger">
           Reset
         </button>
+      </div>
+
+      <!-- Circular Sector Board -->
+      <div id="circular-board-section" class="mb-4 d-none">
+        <div class="row">
+          <div class="col-12 col-lg-6 mx-auto">
+            <div id="circular-board-header" class="d-flex justify-content-between align-items-center mb-2">
+              <h3>
+                Sky Map
+                <i class="bi bi-question-circle-fill text-info section-help"
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="right"
+                   title="Visual representation of the sky sectors. Click a sector to see details. Hover to highlight adjacent sectors. The visible sky (half the board) is shown brighter."></i>
+              </h3>
+              <div class="btn-group btn-group-sm">
+                <button type="button" id="rotate-board-left" class="btn btn-outline-secondary" title="Rotate left">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button type="button" id="rotate-board-right" class="btn btn-outline-secondary" title="Rotate right">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button type="button" id="toggle-visible-sky" class="btn btn-outline-info active" title="Toggle visible sky highlight">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+            </div>
+            <div id="circular-board-container">
+              <div id="circular-board">
+                <div id="board-center">
+                  <div id="center-sun">
+                    <i class="bi bi-sun-fill"></i>
+                  </div>
+                  <div id="center-info">
+                    <span id="center-sector-num"></span>
+                    <span id="center-object-name"></span>
+                  </div>
+                </div>
+                <div id="visible-sky-indicator"></div>
+                <!-- Sectors will be dynamically generated -->
+              </div>
+              <div id="board-legend" class="mt-2">
+                <div class="d-flex flex-wrap justify-content-center gap-2 small">
+                  <span class="badge bg-secondary"><i class="bi bi-question-lg"></i> Unknown</span>
+                  <span class="badge bg-success"><i class="bi bi-check-lg"></i> Confirmed</span>
+                  <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Empty/Ruled Out</span>
+                  <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Planet X</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="board" class="container-fluid px-0 d-none">
