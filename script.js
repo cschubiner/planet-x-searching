@@ -60,6 +60,7 @@ const MODE_SETTINGS = {
     },
     research: ["A", "B", "C", "D", "E", "F"],
     conferences: [{ name: "X1", threshold: 12 }],
+    theorySectors: [3, 6, 9, 12], // Theory phases trigger when visible sky reaches these sectors
   },
   expert: {
     rules: [
@@ -113,6 +114,7 @@ const MODE_SETTINGS = {
       { name: "X1", threshold: 10 },
       { name: "X2", threshold: 22 },
     ],
+    theorySectors: [3, 6, 9, 12, 15, 18], // Theory phases trigger when visible sky reaches these sectors
   },
 };
 const DIFFICULTY_START_HINTS = {
@@ -1562,8 +1564,29 @@ function addMoveRow() {
       const $header = $confRow.find("th");
       if (triggered && !$header.text().includes("TRIGGERED")) {
         $header.html(`${conf.name} <span class="badge bg-warning text-dark">TRIGGERED @ ${conf.threshold}</span>`);
+
+        // Show conference alert (only once per conference)
+        const conferenceKey = `conference-${conf.name}-shown`;
+        if (!sessionStorage.getItem(conferenceKey)) {
+          sessionStorage.setItem(conferenceKey, 'true');
+          showConferenceAlert(conf.name, conf.threshold);
+        }
       } else if (!triggered) {
         $header.html(`${conf.name} <span class="text-muted small">(at time ${conf.threshold})</span>`);
+      }
+    }
+
+    // Update circular board with player positions and auto-rotate visible sky
+    if (typeof updateCircularBoardPlayers === "function") {
+      const { earthSector, theorySectorTriggered } = updateCircularBoardPlayers(playerTimes, nextPlayer, minTime);
+
+      // Check for theory phase triggers
+      if (theorySectorTriggered) {
+        const theoryKey = `theory-sector-${theorySectorTriggered}-shown`;
+        if (!sessionStorage.getItem(theoryKey)) {
+          sessionStorage.setItem(theoryKey, 'true');
+          showTheoryPhaseAlert(theorySectorTriggered);
+        }
       }
     }
 
@@ -2897,5 +2920,210 @@ function hookCircularBoardToHints() {
   $(document).on("click", ".hint-btn", function () {
     // Small delay to let the hint state update
     setTimeout(syncCircularBoardWithHints, 50);
+  });
+}
+
+/** Update player positions on the circular board and auto-rotate visible sky */
+function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
+  const $board = $("#circular-board");
+  const numSectors = circularBoardState.numSectors;
+  const maxTimeOnBoard = numSectors <= 12 ? 24 : 36; // Standard mode max ~24, Expert mode max ~36
+
+  // Remove existing player pawns
+  $board.find(".player-pawn").remove();
+
+  // Calculate board size for positioning
+  const boardSize = $board.width();
+  const radius = boardSize * 0.48; // Position pawns slightly outside the sectors
+
+  // Add player pawns
+  for (const color of currentGameSettings.playerColors) {
+    const time = playerTimes[color];
+    const isNext = color === nextPlayer;
+
+    // Calculate position based on time (like a clock, starting at 12 o'clock)
+    // Time 0 = 12 o'clock (top), increasing clockwise
+    const angle = (time / maxTimeOnBoard) * 2 * Math.PI - Math.PI / 2;
+    const x = Math.cos(angle) * radius + boardSize / 2;
+    const y = Math.sin(angle) * radius + boardSize / 2;
+
+    const accent = PLAYER_COLORS[color];
+    const $pawn = $("<div>", {
+      class: `player-pawn player-pawn-${color} ${isNext ? "player-pawn-active" : ""}`,
+      "data-color": color,
+      "data-time": time,
+      css: {
+        left: `${x}px`,
+        top: `${y}px`,
+      },
+      title: `${color.toTitleCase()}: Time ${time}${isNext ? " (Next Turn)" : ""}`,
+    }).append(
+      $("<div>", {
+        class: `player-pawn-inner bg-${accent}`,
+      }).text(color.charAt(0).toUpperCase())
+    );
+
+    $board.append($pawn);
+  }
+
+  // Auto-rotate visible sky to align with the furthest back player (lowest time)
+  // The visible sky should show where the "Earth" is in its orbit
+  // In the physical game, the Earth disc rotates to align with the furthest back player
+  const timeToSectorRatio = numSectors / maxTimeOnBoard;
+  const earthSector = Math.floor(minTime * timeToSectorRatio) + 1;
+
+  // Update visible sky to start at this sector
+  const newVisibleSkyStart = ((earthSector - 1) % numSectors) + 1;
+  const previousVisibleSkyStart = circularBoardState.visibleSkyStart;
+  let theorySectorTriggered = null;
+
+  if (circularBoardState.visibleSkyStart !== newVisibleSkyStart) {
+    circularBoardState.visibleSkyStart = newVisibleSkyStart;
+    updateVisibleSky();
+
+    // Check if we crossed a theory sector
+    const mode = currentGameSettings.mode;
+    const theorySectors = MODE_SETTINGS[mode]?.theorySectors || [];
+
+    for (const theorySector of theorySectors) {
+      // Check if we just reached or passed this theory sector
+      if (newVisibleSkyStart >= theorySector && previousVisibleSkyStart < theorySector) {
+        theorySectorTriggered = theorySector;
+        break;
+      }
+      // Handle wrap-around (e.g., going from sector 12 to 1)
+      if (newVisibleSkyStart < previousVisibleSkyStart && theorySector <= newVisibleSkyStart) {
+        theorySectorTriggered = theorySector;
+        break;
+      }
+    }
+  }
+
+  return { earthSector, theorySectorTriggered };
+}
+
+/** Show conference alert modal */
+function showConferenceAlert(conferenceName, threshold) {
+  const message = `
+    <div class="text-center">
+      <i class="bi bi-megaphone fs-1 text-warning mb-3 d-block"></i>
+      <h4>Planet X Conference: ${conferenceName}</h4>
+      <p class="lead">A conference has been triggered at time <strong>${threshold}</strong>!</p>
+      <div class="alert alert-info text-start mt-3">
+        <strong>What to do:</strong>
+        <ol class="mb-0">
+          <li>Open the official app</li>
+          <li>Press the "<strong>Planet X Conference</strong>" button</li>
+          <li>Record the logic rule in the Research Notes section under <strong>${conferenceName}</strong></li>
+        </ol>
+      </div>
+      <p class="text-muted small">All players receive the same information about Planet X's location!</p>
+    </div>
+  `;
+
+  // Create and show a Bootstrap modal
+  const modalHtml = `
+    <div class="modal fade" id="conference-alert-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title">
+              <i class="bi bi-exclamation-triangle"></i> Conference Triggered!
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            ${message}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Remove existing modal if any
+  $("#conference-alert-modal").remove();
+
+  // Add modal to body
+  $("body").append(modalHtml);
+
+  // Show the modal
+  const modal = new bootstrap.Modal(document.getElementById("conference-alert-modal"));
+  modal.show();
+
+  // Clean up after modal is hidden
+  $("#conference-alert-modal").on("hidden.bs.modal", function () {
+    $(this).remove();
+  });
+}
+
+/** Show theory phase alert modal */
+function showTheoryPhaseAlert(sector) {
+  const mode = currentGameSettings.mode;
+  const maxTheories = mode === "expert" ? 2 : 1;
+
+  const message = `
+    <div class="text-center">
+      <i class="bi bi-journal-text fs-1 text-primary mb-3 d-block"></i>
+      <h4>Theory Phase at Sector ${sector}</h4>
+      <p class="lead">The visible sky has reached sector <strong>${sector}</strong> - it's time to submit theories!</p>
+      <div class="alert alert-info text-start mt-3">
+        <strong>What to do:</strong>
+        <ol class="mb-0">
+          <li>Each player can submit <strong>${maxTheories} ${maxTheories === 1 ? 'theory' : 'theories'}</strong> this phase</li>
+          <li>Choose a sector and object type you're confident about</li>
+          <li>Submit your theory in the official app</li>
+          <li>Record theories in the <strong>Theory Tracking</strong> section below</li>
+          <li>Wait for <strong>Peer Review</strong> to see if your theory is correct!</li>
+        </ol>
+      </div>
+      <div class="alert alert-warning text-start">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Remember:</strong> You can submit theories for <em>any sector</em>, not just visible ones!
+      </div>
+    </div>
+  `;
+
+  // Create and show a Bootstrap modal
+  const modalHtml = `
+    <div class="modal fade" id="theory-phase-alert-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-lightbulb"></i> Theory Phase Triggered!
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            ${message}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Remove existing modal if any
+  $("#theory-phase-alert-modal").remove();
+
+  // Add modal to body
+  $("body").append(modalHtml);
+
+  // Show the modal
+  const modal = new bootstrap.Modal(document.getElementById("theory-phase-alert-modal"));
+  modal.show();
+
+  // Clean up after modal is hidden
+  $("#theory-phase-alert-modal").on("hidden.bs.modal", function () {
+    $(this).remove();
   });
 }
