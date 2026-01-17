@@ -126,8 +126,14 @@ const currentGameSettings = {};
 
 const STORAGE_KEY = "planetXGameState";
 
+// Undo/Redo history stacks
+const undoStack = [];
+const redoStack = [];
+const MAX_HISTORY_SIZE = 100; // Limit history to prevent memory issues
+
 // Global auto-save function (debounced)
 let autoSaveTimeout = null;
+let isRestoringState = false; // Flag to prevent undo/redo from creating new history entries
 function triggerAutoSave() {
   if (!currentGameSettings.mode) return; // Game not started
   if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
@@ -136,9 +142,9 @@ function triggerAutoSave() {
   }, 500);
 }
 
-/** Saves the current game state to localStorage */
-function saveGameState() {
-  if (!currentGameSettings.mode) return; // Game not started yet
+/** Captures the current game state */
+function getCurrentState() {
+  if (!currentGameSettings.mode) return null; // Game not started yet
 
   const state = {
     settings: { ...currentGameSettings },
@@ -235,7 +241,39 @@ function saveGameState() {
     }
   });
 
+  return state;
+}
+
+/** Saves the current game state to localStorage and history */
+function saveGameState() {
+  const state = getCurrentState();
+  if (!state) return;
+
+  // Save to localStorage
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  // Add to undo history (but not when we're restoring from undo/redo)
+  if (!isRestoringState) {
+    // Only add to history if the state is different from the last one
+    const lastState = undoStack[undoStack.length - 1];
+    const stateJson = JSON.stringify(state);
+    const lastStateJson = lastState ? JSON.stringify(lastState) : null;
+
+    if (stateJson !== lastStateJson) {
+      undoStack.push(JSON.parse(stateJson)); // Deep clone
+
+      // Limit history size
+      if (undoStack.length > MAX_HISTORY_SIZE) {
+        undoStack.shift();
+      }
+
+      // Clear redo stack when new action is taken
+      redoStack.length = 0;
+
+      // Update undo/redo button states
+      updateUndoRedoButtons();
+    }
+  }
 }
 
 /** Loads game state from localStorage */
@@ -254,6 +292,121 @@ function loadGameState() {
 /** Clears saved game state */
 function clearGameState() {
   localStorage.removeItem(STORAGE_KEY);
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoButtons();
+}
+
+/** Clears the current UI state before restoring */
+function clearCurrentState() {
+  // Clear all hint buttons
+  $(".hint-btn").removeClass("active");
+
+  // Clear all move rows (except keep at least one)
+  $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
+    $row.find("input[type='radio']").prop("checked", false);
+    $row.find("select").val("");
+    $row.find("[contenteditable]").text("");
+  });
+
+  // Clear research notes
+  $("#research-body tr").forEach(($row) => {
+    $row.find("select").val("");
+    $row.find("[contenteditable]").text("");
+  });
+
+  // Clear sector notes
+  $("#hints-notes-row [contenteditable]").text("");
+
+  // Clear score calculator
+  $("#score-table input").val("");
+
+  // Clear theories
+  $(".theory-row").forEach(($row) => {
+    $row.find("input[type='radio']").prop("checked", false);
+    $row.find("input[type='checkbox']").prop("checked", false);
+    $row.find("select").val("");
+  });
+}
+
+/** Undo the last action */
+function undo() {
+  if (undoStack.length === 0) return;
+
+  // Save current state to redo stack
+  const currentState = getCurrentState();
+  if (currentState) {
+    redoStack.push(currentState);
+  }
+
+  // Pop the last state from undo stack
+  const previousState = undoStack.pop();
+
+  // Restore that state
+  isRestoringState = true;
+  clearCurrentState();
+  restoreGameState(previousState);
+
+  // Also save to localStorage
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(previousState));
+
+  // Update button states
+  updateUndoRedoButtons();
+
+  // Sync circular board with the restored state
+  setTimeout(() => {
+    if (typeof syncCircularBoardWithHints === "function") {
+      syncCircularBoardWithHints();
+    }
+    isRestoringState = false;
+  }, 200);
+}
+
+/** Redo the last undone action */
+function redo() {
+  if (redoStack.length === 0) return;
+
+  // Save current state to undo stack
+  const currentState = getCurrentState();
+  if (currentState) {
+    undoStack.push(currentState);
+  }
+
+  // Pop the last state from redo stack
+  const nextState = redoStack.pop();
+
+  // Restore that state
+  isRestoringState = true;
+  clearCurrentState();
+  restoreGameState(nextState);
+
+  // Also save to localStorage
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+
+  // Update button states
+  updateUndoRedoButtons();
+
+  // Sync circular board with the restored state
+  setTimeout(() => {
+    if (typeof syncCircularBoardWithHints === "function") {
+      syncCircularBoardWithHints();
+    }
+    isRestoringState = false;
+  }, 200);
+}
+
+/** Updates the undo/redo button states */
+function updateUndoRedoButtons() {
+  const $undoBtn = $("#undo-btn");
+  const $redoBtn = $("#redo-btn");
+
+  if ($undoBtn.length) {
+    $undoBtn.prop("disabled", undoStack.length === 0);
+  }
+
+  if ($redoBtn.length) {
+    $redoBtn.prop("disabled", redoStack.length === 0);
+  }
 }
 
 /** Restores game state after game has started */
@@ -1964,6 +2117,21 @@ $(() => {
 
     startGame(settings);
 
+    // Initialize undo/redo buttons
+    updateUndoRedoButtons();
+
+    // Capture initial state for undo history after a short delay
+    // (to ensure the game is fully initialized)
+    if (!isResume) {
+      setTimeout(() => {
+        const initialState = getCurrentState();
+        if (initialState) {
+          undoStack.push(initialState);
+          updateUndoRedoButtons();
+        }
+      }, 300);
+    }
+
     // Use global auto-save
     const autoSave = triggerAutoSave;
 
@@ -2024,7 +2192,7 @@ $(() => {
     };
     $(".hint-btn").on({
       activate: (event) => {
-        const $hintBtn = $(event.target);
+        const $hintBtn = $(event.currentTarget);
         $hintBtn.addClass("active");
         // deactivate the other one
         const hintName = $hintBtn.attr("hintName");
@@ -2034,11 +2202,11 @@ $(() => {
         );
       },
       deactivate: (event) => {
-        const $hintBtn = $(event.target);
+        const $hintBtn = $(event.currentTarget);
         $hintBtn.removeClass("active");
       },
       toggleActive: (event) => {
-        const $hintBtn = $(event.target);
+        const $hintBtn = $(event.currentTarget);
         $hintBtn.trigger(isActive($hintBtn) ? "deactivate" : "activate");
       },
       click: (event) => {
@@ -2272,6 +2440,15 @@ $(() => {
       // Restore state after a short delay
       setTimeout(() => {
         restoreGameState(savedState);
+
+        // Add the restored state to undo history
+        setTimeout(() => {
+          const restoredState = getCurrentState();
+          if (restoredState) {
+            undoStack.push(restoredState);
+            updateUndoRedoButtons();
+          }
+        }, 200);
       }, 100);
     });
 
@@ -2388,6 +2565,32 @@ function initializeTutorial() {
 // Initialize tutorial when document is ready
 $(document).ready(function () {
   initializeTutorial();
+
+  // Undo/Redo button event handlers
+  $("#undo-btn").on("click", function () {
+    undo();
+  });
+
+  $("#redo-btn").on("click", function () {
+    redo();
+  });
+
+  // Keyboard shortcuts for undo/redo
+  $(document).on("keydown", function (e) {
+    // Ctrl+Z or Cmd+Z for undo
+    if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    // Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z for redo
+    else if (
+      ((e.ctrlKey || e.metaKey) && e.key === "y") ||
+      ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+    ) {
+      e.preventDefault();
+      redo();
+    }
+  });
 });
 
 // ========== Circular Board ==========

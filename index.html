@@ -401,6 +401,17 @@
       <div id="board" class="container-fluid px-0 d-none">
         <div class="row mb-2">
           <div class="col">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h4 class="mb-0">Game Board</h4>
+              <div class="btn-group" role="group" aria-label="Undo/Redo controls">
+                <button type="button" id="undo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Undo (Ctrl+Z)">
+                  <i class="bi bi-arrow-counterclockwise"></i> Undo
+                </button>
+                <button type="button" id="redo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Redo (Ctrl+Y)">
+                  <i class="bi bi-arrow-clockwise"></i> Redo
+                </button>
+              </div>
+            </div>
             <div class="table-responsive position-relative">
               <table
                 id="hints-table"
