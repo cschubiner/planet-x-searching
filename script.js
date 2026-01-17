@@ -855,6 +855,30 @@ function isPrime(num) {
   return true;
 }
 
+/**
+ * Calculate the wrapped position on the time track (1-based)
+ * @param {number} totalTime - Cumulative time total
+ * @param {number} trackSize - Size of the track (12 for standard, 18 for expert)
+ * @returns {number} Position on track (1 to trackSize)
+ * 
+ * The track wraps around like a clock face. Players start at the maximum position
+ * (12 or 18) and move clockwise. When reaching exact multiples of the track size,
+ * players are at position 12/18, not position 0 (which doesn't exist on the track).
+ * 
+ * Examples:
+ * - getTrackPosition(0, 12) => 12  (start at position 12)
+ * - getTrackPosition(11, 12) => 11
+ * - getTrackPosition(12, 12) => 12 (completed one lap, at position 12)
+ * - getTrackPosition(13, 12) => 1  (wrapped to position 1)
+ * - getTrackPosition(14, 12) => 2  (e.g., from pos 11, advance 3)
+ */
+function getTrackPosition(totalTime, trackSize) {
+  if (totalTime === 0) return trackSize; // Start at position 12 or 18
+  const position = totalTime % trackSize;
+  // Exact multiples stay at trackSize (not position 0, which doesn't exist)
+  return position === 0 ? trackSize : position;
+}
+
 function getUrl(settings = {}) {
   const questionMarkIndex = document.URL.indexOf("?");
   let url =
@@ -1528,17 +1552,23 @@ function addMoveRow() {
       }
     }
 
-    // Update display
+    // Update display with both cumulative time and wrapped position
     const $display = $("#time-track-display");
     $display.empty();
+    
+    // Determine track size based on mode
+    const mode = currentGameSettings.mode;
+    const trackSize = mode === "standard" ? 12 : 18;
 
     for (const color of currentGameSettings.playerColors) {
       const time = playerTimes[color];
+      const position = getTrackPosition(time, trackSize);
       const isNext = color === nextPlayer;
       const accent = PLAYER_COLORS[color];
       const $badge = $("<span>", {
         class: `badge bg-${accent} me-2 ${isNext ? "border border-dark border-2" : ""}`,
-      }).text(`${color.charAt(0).toUpperCase()}: ${time}`);
+        title: `Track wraps at ${trackSize}. Current lap position: ${position}, Total time spent: ${time}`,
+      }).text(`${color.charAt(0).toUpperCase()}: ${time} (pos ${position}/${trackSize})`);
       $display.append($badge);
     }
 
