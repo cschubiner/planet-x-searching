@@ -1092,6 +1092,10 @@ function advanceAllTheories(playerColors, numSectors) {
     }
   });
 
+  // Remove the theory-phase-pending highlight since user clicked the button
+  const $btn = $("#advance-theories-btn");
+  $btn.removeClass("theory-phase-pending");
+
   // Show feedback
   if (theoriesAdvanced > 0) {
     let message = `Advanced ${theoriesAdvanced} theor${theoriesAdvanced === 1 ? 'y' : 'ies'}!`;
@@ -1099,7 +1103,6 @@ function advanceAllTheories(playerColors, numSectors) {
       message += ` ${theoriesReachedPeerReview} reached Peer Review - verify in the app!`;
     }
     // Brief visual feedback
-    const $btn = $("#advance-theories-btn");
     $btn.addClass("btn-success").removeClass("btn-primary");
     setTimeout(() => {
       $btn.addClass("btn-primary").removeClass("btn-success");
@@ -1313,7 +1316,7 @@ function startGame(gameSettings) {
           BootstrapHtml.buttonGroup(
             [
               { hint: "no", accent: "danger", icon: "x-lg" },
-              { hint: "suspect", accent: "warning", icon: "exclamation-lg" },
+              { hint: "suspect", accent: "info", icon: "exclamation-lg" },
               { hint: "yes", accent: "success", icon: "check-lg" },
             ].map(({ hint, accent, icon }) =>
               BootstrapHtml.toggleButton(
@@ -2481,12 +2484,14 @@ $(() => {
       success: "table-success",
       danger: "table-danger",
       warning: "table-warning",
+      info: "table-info",
       disabled: "table-secondary",
     };
     const TEXT_COLOR_CLASSES = {
       success: "text-success",
       danger: "text-danger",
       warning: "text-warning",
+      info: "text-info",
     };
     $(".hint-btn").on({
       activate: (event) => {
@@ -2606,8 +2611,8 @@ $(() => {
             } else if (value === false) {
               classKey = "disabled";
             } else if (value === "suspect") {
-              // suspected but not confirmed - show warning color
-              classKey = "warning";
+              // suspected but not confirmed - show info/blue color
+              classKey = "info";
             } else {
               // blank hint
               if (setRestNo) {
@@ -3388,10 +3393,16 @@ function showTheoryPhaseAlert(sector) {
         <ol class="mb-0">
           <li>Each player can submit <strong>${maxTheories} ${maxTheories === 1 ? 'theory' : 'theories'}</strong> this phase</li>
           <li>Choose a sector and object type you're confident about</li>
-          <li>Submit your theory in the official app</li>
-          <li>Record theories in the <strong>Theory Tracking</strong> section below</li>
-          <li>Wait for <strong>Peer Review</strong> to see if your theory is correct!</li>
+          <li>Submit your theory in the <strong>official Planet X app</strong></li>
+          <li>Record your theory in the <strong>Theory Tracking</strong> section below</li>
+          <li>Click <strong><i class="bi bi-fast-forward-fill"></i> Advance Theories</strong> to move all submitted theories one step closer to Peer Review!</li>
         </ol>
+      </div>
+      <div class="alert alert-success text-start">
+        <i class="bi bi-arrow-right-circle"></i>
+        <strong>Next Step:</strong> After recording your theories, click the
+        <span class="badge bg-primary"><i class="bi bi-fast-forward-fill"></i> Advance Theories</span>
+        button to progress them toward Peer Review.
       </div>
       <div class="alert alert-warning text-start">
         <i class="bi bi-exclamation-triangle"></i>
@@ -3416,7 +3427,7 @@ function showTheoryPhaseAlert(sector) {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-              Got it!
+              Got it - I'll submit my theories!
             </button>
           </div>
         </div>
@@ -3434,8 +3445,13 @@ function showTheoryPhaseAlert(sector) {
   const modal = new bootstrap.Modal(document.getElementById("theory-phase-alert-modal"));
   modal.show();
 
-  // Clean up after modal is hidden
+  // Highlight the Advance Theories button when modal is dismissed
   $("#theory-phase-alert-modal").on("hidden.bs.modal", function () {
     $(this).remove();
+    // Add pulsing highlight to the Advance Theories button
+    const $advanceBtn = $("#advance-theories-btn");
+    $advanceBtn.addClass("theory-phase-pending");
+    // Scroll to the theories section
+    document.getElementById("theories-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 }
