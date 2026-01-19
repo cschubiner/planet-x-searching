@@ -1313,6 +1313,7 @@ function startGame(gameSettings) {
           BootstrapHtml.buttonGroup(
             [
               { hint: "no", accent: "danger", icon: "x-lg" },
+              { hint: "suspect", accent: "warning", icon: "exclamation-lg" },
               { hint: "yes", accent: "success", icon: "check-lg" },
             ].map(({ hint, accent, icon }) =>
               BootstrapHtml.toggleButton(
@@ -2445,9 +2446,11 @@ $(() => {
       return $button.hasClass("active");
     }
 
+    // Returns: true (yes/confirmed), false (no/ruled out), "suspect" (suspected), null (blank)
     function getHintValue(hintName) {
       if (isActive($(`#${hintName}-yes`))) return true;
       if (isActive($(`#${hintName}-no`))) return false;
+      if (isActive($(`#${hintName}-suspect`))) return "suspect";
       return null;
     }
 
@@ -2457,7 +2460,7 @@ $(() => {
         .join("");
       let numHints = 0;
       const hintsValues = {};
-      const hintsByValue = { yes: [], no: [], blank: [] };
+      const hintsByValue = { yes: [], no: [], suspect: [], blank: [] };
       $(`.hint-btn-group${attrsFilterStr}`).forEach(($element) => {
         const hintName = $element.attr("hintName");
         if (hintName in hintsValues) return;
@@ -2465,6 +2468,7 @@ $(() => {
         let addToKey;
         if (value === true) addToKey = "yes";
         else if (value === false) addToKey = "no";
+        else if (value === "suspect") addToKey = "suspect";
         else addToKey = "blank";
         numHints++;
         hintsValues[hintName] = value;
@@ -2476,11 +2480,13 @@ $(() => {
     const BG_COLOR_CLASSES = {
       success: "table-success",
       danger: "table-danger",
+      warning: "table-warning",
       disabled: "table-secondary",
     };
     const TEXT_COLOR_CLASSES = {
       success: "text-success",
       danger: "text-danger",
+      warning: "text-warning",
     };
     $(".hint-btn").on({
       activate: (event) => {
@@ -2505,11 +2511,45 @@ $(() => {
         const $hintBtn = $(event.currentTarget);
         $hintBtn.trigger("toggleActive");
 
+        const clickedHint = $hintBtn.attr("hint");
+        const clickedHintName = $hintBtn.attr("hintName");
+        const sector = $hintBtn.attr("sector");
+        const isNowActive = isActive($hintBtn);
+
+        // AUTO-MARK: When clicking "yes" (confirming an object), mark all
+        // OTHER objects in that sector as "no" since only one thing can
+        // be in each sector. This happens before autoSave so it's all
+        // grouped into a single undo action.
+        if (clickedHint === "yes" && isNowActive) {
+          // Get all hint buttons in this sector and mark the non-confirmed ones as "no"
+          $(`.hint-btn[sector="${sector}"]`).forEach(($btn) => {
+            const btnHintName = $btn.attr("hintName");
+            const btnHint = $btn.attr("hint");
+            // Skip the button we just clicked (it's already set to "yes")
+            if (btnHintName === clickedHintName) return;
+            // Skip buttons that are already "no"
+            if (btnHint === "no" && isActive($btn)) return;
+            // Mark as "no" if not already
+            if (btnHint === "no") {
+              $btn.trigger("activate");
+            } else if (isActive($btn)) {
+              // Deactivate any "suspect" or other states
+              $btn.trigger("deactivate");
+              // Then activate the "no" button for this hint
+              $(`#${btnHintName}-no`).trigger("activate");
+            } else {
+              // Not active, just activate the "no" button
+              $(`#${btnHintName}-no`).trigger("activate");
+            }
+          });
+        }
+
         // update the hint cell colors for this object (must be within a limit)
         const object = $hintBtn.attr("object");
         const objectHints = getHintValues({ object });
         const numYesObjects = objectHints.yes.length;
-        const numBlankObjects = objectHints.blank.length;
+        // "suspect" and "blank" are both possibilities (not confirmed, not ruled out)
+        const numPossibleObjects = objectHints.blank.length + objectHints.suspect.length;
         // update count text and cell color
         const limit =
           MODE_SETTINGS[currentGameSettings.mode].objects[object].count;
@@ -2526,10 +2566,10 @@ $(() => {
           //   columns: each column would have to be checked to understand its
           //   state, which would be checking the entire table. that's _okay_,
           //   but not ideal.
-        } else if (numYesObjects + numBlankObjects === limit) {
+        } else if (numYesObjects + numPossibleObjects === limit) {
           // exactly enough buttons left to fulfill the limit
           cellClass = "success";
-        } else if (numYesObjects + numBlankObjects < limit) {
+        } else if (numYesObjects + numPossibleObjects < limit) {
           // not enough buttons left to fulfill the limit
           cellClass = "danger";
         }
@@ -2540,11 +2580,11 @@ $(() => {
 
         // update the hint cell colors for this sector (must be exactly one
         // object per sector)
-        const sector = $hintBtn.attr("sector");
         const sectorHints = getHintValues({ sector });
         const numYesSectors = sectorHints.yes.length;
-        const numBlankSectors = sectorHints.blank.length;
-        if (numYesSectors + numBlankSectors === 0) {
+        // "suspect" and "blank" are both possibilities
+        const numPossibleSectors = sectorHints.blank.length + sectorHints.suspect.length;
+        if (numYesSectors + numPossibleSectors === 0) {
           // entire sector is marked as "no", which is bad
           for (const hintName of Object.keys(sectorHints.hints)) {
             $(`#${hintName}-cell`).chooseClass(BG_COLOR_CLASSES, "danger");
@@ -2565,6 +2605,9 @@ $(() => {
               classKey = hintYesClassKey;
             } else if (value === false) {
               classKey = "disabled";
+            } else if (value === "suspect") {
+              // suspected but not confirmed - show warning color
+              classKey = "warning";
             } else {
               // blank hint
               if (setRestNo) {
