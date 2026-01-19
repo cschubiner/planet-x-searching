@@ -235,11 +235,11 @@ function getCurrentState() {
     const player = $row.find(`input[name="${theoryId}-player"]:checked`).attr("value");
     const sector = $row.find(`#${theoryId}-sector`).val();
     const object = $row.find(`input[name="${theoryId}-object"]:checked`).attr("value");
-    const revealed = $row.find(`#${theoryId}-revealed`).prop("checked");
-    const correct = $row.find(`#${theoryId}-correct`).prop("checked");
+    const progress = parseInt($row.attr("data-progress") || "0");
+    const result = $row.find(`input[name="${theoryId}-result"]:checked`).val() || "pending";
 
-    if (player || sector || object || revealed || correct) {
-      state.theories.push({ player, sector, object, revealed, correct });
+    if (player || sector || object || progress > 0 || result !== "pending") {
+      state.theories.push({ player, sector, object, progress, result });
     }
   });
 
@@ -325,9 +325,20 @@ function clearCurrentState() {
 
   // Clear theories
   $(".theory-row").forEach(($row) => {
+    const theoryId = $row.getId();
     $row.find("input[type='radio']").prop("checked", false);
     $row.find("input[type='checkbox']").prop("checked", false);
     $row.find("select").val("");
+    // Reset progress to NOT_SUBMITTED
+    $row.attr("data-progress", "0");
+    $row.removeClass("table-success table-danger");
+    // Reset the result to pending
+    $row.find(`input[name="${theoryId}-result"][value="pending"]`).prop("checked", true);
+    // Reset the progress indicator
+    const $progressCell = $row.find(`#${theoryId}-progress`);
+    if ($progressCell.length > 0 && typeof createTheoryProgressIndicator === "function") {
+      $progressCell.empty().append(createTheoryProgressIndicator(theoryId, 0));
+    }
   });
 }
 
@@ -524,11 +535,36 @@ function restoreGameState(state) {
       if (theory.object) {
         $row.find(`input[name="${theoryId}-object"][value="${theory.object}"]`).prop("checked", true).trigger("change");
       }
-      if (theory.revealed) {
-        $row.find(`#${theoryId}-revealed`).prop("checked", true);
+
+      // Restore progress (new format)
+      if (theory.progress !== undefined && theory.progress > 0) {
+        updateTheoryProgress(theoryId, theory.progress);
       }
-      if (theory.correct) {
-        $row.find(`#${theoryId}-correct`).prop("checked", true);
+
+      // Restore result (new format)
+      if (theory.result && theory.result !== "pending") {
+        $row.find(`input[name="${theoryId}-result"][value="${theory.result}"]`).prop("checked", true);
+        // Apply row styling
+        if (theory.result === "correct") {
+          $row.addClass("table-success");
+        } else if (theory.result === "incorrect") {
+          $row.addClass("table-danger");
+        }
+      }
+
+      // Backwards compatibility: convert old revealed/correct to new format
+      if (theory.revealed !== undefined || theory.correct !== undefined) {
+        if (theory.correct) {
+          $row.find(`input[name="${theoryId}-result"][value="correct"]`).prop("checked", true);
+          $row.addClass("table-success");
+        } else if (theory.revealed) {
+          $row.find(`input[name="${theoryId}-result"][value="incorrect"]`).prop("checked", true);
+          $row.addClass("table-danger");
+        }
+        // Set progress to peer review if it was revealed
+        if (theory.revealed && (!theory.progress || theory.progress < 3)) {
+          updateTheoryProgress(theoryId, 3);
+        }
       }
     }
 
@@ -934,10 +970,143 @@ function toggleImageWhiteVariant(selector) {
 
 let theoriesCounter = 0;
 
+// Theory progress states: 0 = Not submitted, 1 = Placed, 2 = Advanced, 3 = Peer Review
+const THEORY_PROGRESS = {
+  NOT_SUBMITTED: 0,
+  PLACED: 1,
+  ADVANCED: 2,
+  PEER_REVIEW: 3,
+};
+
+const THEORY_PROGRESS_LABELS = {
+  [THEORY_PROGRESS.NOT_SUBMITTED]: { label: "Not Submitted", class: "secondary", icon: "dash" },
+  [THEORY_PROGRESS.PLACED]: { label: "Placed", class: "info", icon: "1-circle-fill" },
+  [THEORY_PROGRESS.ADVANCED]: { label: "Advanced", class: "warning", icon: "2-circle-fill" },
+  [THEORY_PROGRESS.PEER_REVIEW]: { label: "Peer Review!", class: "danger", icon: "exclamation-triangle-fill" },
+};
+
+/** Creates the progress indicator element for a theory */
+function createTheoryProgressIndicator(theoryId, progress = THEORY_PROGRESS.NOT_SUBMITTED) {
+  const progressInfo = THEORY_PROGRESS_LABELS[progress];
+
+  // Create the visual progress track
+  const $container = $("<div>", { class: "theory-progress-container" });
+
+  // Progress dots
+  const $track = $("<div>", { class: "theory-progress-track d-flex align-items-center justify-content-center gap-1" });
+
+  for (let i = 1; i <= 3; i++) {
+    const isActive = progress >= i;
+    const isCurrent = progress === i;
+    let dotClass = "theory-progress-dot";
+
+    if (i === 3) {
+      // Peer review dot is special
+      dotClass += isActive ? " bg-danger" : " bg-secondary opacity-25";
+    } else if (i === 2) {
+      dotClass += isActive ? " bg-warning" : " bg-secondary opacity-25";
+    } else {
+      dotClass += isActive ? " bg-info" : " bg-secondary opacity-25";
+    }
+
+    if (isCurrent) {
+      dotClass += " current";
+    }
+
+    $track.append($("<span>", { class: dotClass }));
+
+    if (i < 3) {
+      // Add connector line between dots
+      const connectorClass = progress > i ? "theory-progress-connector active" : "theory-progress-connector";
+      $track.append($("<span>", { class: connectorClass }));
+    }
+  }
+
+  $container.append($track);
+
+  // Status badge
+  const $badge = $("<div>", {
+    class: `badge bg-${progressInfo.class} mt-1 theory-progress-badge`,
+    id: `${theoryId}-progress-badge`
+  }).append(
+    $("<i>", { class: `bi bi-${progressInfo.icon} me-1` }),
+    progressInfo.label
+  );
+
+  $container.append($badge);
+
+  return $container;
+}
+
+/** Updates the progress indicator for a theory */
+function updateTheoryProgress(theoryId, progress) {
+  const $cell = $(`#${theoryId}-progress`);
+  $cell.empty().append(createTheoryProgressIndicator(theoryId, progress));
+  $(`#${theoryId}`).attr("data-progress", progress);
+}
+
 /** Initializes the theories tracking table */
 function initializeTheoriesTable(playerColors, numSectors) {
   // Add initial empty row
   addTheoryRow(playerColors, numSectors);
+
+  // Set up advance theories button
+  $("#advance-theories-btn").on("click", () => {
+    advanceAllTheories(playerColors, numSectors);
+  });
+}
+
+/** Advances all submitted theories one step toward peer review */
+function advanceAllTheories(playerColors, numSectors) {
+  let theoriesAdvanced = 0;
+  let theoriesReachedPeerReview = 0;
+
+  $(".theory-row").each(function() {
+    const $row = $(this);
+    const theoryId = $row.attr("id");
+    const currentProgress = parseInt($row.attr("data-progress") || "0");
+
+    // Skip if not submitted or already at peer review
+    if (currentProgress === THEORY_PROGRESS.NOT_SUBMITTED || currentProgress >= THEORY_PROGRESS.PEER_REVIEW) {
+      return;
+    }
+
+    // Check if theory has required fields filled
+    const hasPlayer = $row.find(`input[name="${theoryId}-player"]:checked`).length > 0;
+    const hasSector = $(`#${theoryId}-sector`).val() !== "";
+    const hasObject = $row.find(`input[name="${theoryId}-object"]:checked`).length > 0;
+
+    if (!hasPlayer || !hasSector || !hasObject) {
+      return; // Skip incomplete theories
+    }
+
+    // Advance the theory
+    const newProgress = currentProgress + 1;
+    updateTheoryProgress(theoryId, newProgress);
+    theoriesAdvanced++;
+
+    if (newProgress === THEORY_PROGRESS.PEER_REVIEW) {
+      theoriesReachedPeerReview++;
+      // Highlight the row
+      $row.addClass("table-danger");
+    }
+  });
+
+  // Show feedback
+  if (theoriesAdvanced > 0) {
+    let message = `Advanced ${theoriesAdvanced} theor${theoriesAdvanced === 1 ? 'y' : 'ies'}!`;
+    if (theoriesReachedPeerReview > 0) {
+      message += ` ${theoriesReachedPeerReview} reached Peer Review - verify in the app!`;
+    }
+    // Brief visual feedback
+    const $btn = $("#advance-theories-btn");
+    $btn.addClass("btn-success").removeClass("btn-primary");
+    setTimeout(() => {
+      $btn.addClass("btn-primary").removeClass("btn-success");
+    }, 1000);
+  }
+
+  triggerAutoSave();
 }
 
 /** Adds a row to the theories table */
@@ -948,7 +1117,7 @@ function addTheoryRow(playerColors, numSectors) {
   const theoryObjects = ["asteroid", "comet", "dwarf-planet", "gas-cloud"];
 
   $("#theories-body").append(
-    $("<tr>", { id: theoryId, class: "theory-row", new: "true" }).append(
+    $("<tr>", { id: theoryId, class: "theory-row", new: "true", "data-progress": "0" }).append(
       // Player column
       $("<td>").append(
         BootstrapHtml.radioButtonGroup(
@@ -980,23 +1149,57 @@ function addTheoryRow(playerColors, numSectors) {
           { elementAccent: "secondary" }
         )
       ),
-      // Revealed column
-      $("<td>", { class: "text-center" }).append(
-        $("<input>", {
-          type: "checkbox",
-          id: `${theoryId}-revealed`,
-          class: "form-check-input theory-checkbox",
-          theory: theoryId,
-        })
+      // Progress column
+      $("<td>", { id: `${theoryId}-progress`, class: "text-center" }).append(
+        createTheoryProgressIndicator(theoryId, THEORY_PROGRESS.NOT_SUBMITTED)
       ),
-      // Correct column
+      // Correct column (combined revealed + correct)
       $("<td>", { class: "text-center" }).append(
-        $("<input>", {
-          type: "checkbox",
-          id: `${theoryId}-correct`,
-          class: "form-check-input theory-checkbox",
-          theory: theoryId,
-        })
+        $("<div>", { class: "btn-group btn-group-sm", role: "group" }).append(
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-pending`,
+            value: "pending",
+            autocomplete: "off",
+            checked: true,
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-secondary",
+            for: `${theoryId}-pending`,
+            title: "Pending verification",
+          }).append($("<i>", { class: "bi bi-hourglass-split" })),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-correct`,
+            value: "correct",
+            autocomplete: "off",
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-success",
+            for: `${theoryId}-correct`,
+            title: "Correct!",
+          }).append($("<i>", { class: "bi bi-check-lg" })),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-incorrect`,
+            value: "incorrect",
+            autocomplete: "off",
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-danger",
+            for: `${theoryId}-incorrect`,
+            title: "Incorrect",
+          }).append($("<i>", { class: "bi bi-x-lg" }))
+        )
       )
     )
   );
@@ -1004,13 +1207,37 @@ function addTheoryRow(playerColors, numSectors) {
   // Toggle white image variant for object selection
   toggleImageWhiteVariant(`input[name="${theoryId}-object"]`);
 
-  // Add new row when this one is changed
+  // When theory details are filled in, auto-set progress to PLACED if still NOT_SUBMITTED
   $(`[theory="${theoryId}"]`).on("change", (event) => {
     const $row = $(`#${theoryId}`);
+
+    // Auto-add new row
     if ($row.attr("new")) {
       $row.attr("new", null);
       addTheoryRow(playerColors, numSectors);
     }
+
+    // Auto-set progress to PLACED when all fields are filled
+    const currentProgress = parseInt($row.attr("data-progress") || "0");
+    if (currentProgress === THEORY_PROGRESS.NOT_SUBMITTED) {
+      const hasPlayer = $row.find(`input[name="${theoryId}-player"]:checked`).length > 0;
+      const hasSector = $(`#${theoryId}-sector`).val() !== "";
+      const hasObject = $row.find(`input[name="${theoryId}-object"]:checked`).length > 0;
+
+      if (hasPlayer && hasSector && hasObject) {
+        updateTheoryProgress(theoryId, THEORY_PROGRESS.PLACED);
+      }
+    }
+
+    // Update row styling based on result
+    const result = $(`input[name="${theoryId}-result"]:checked`).val();
+    $row.removeClass("table-success table-danger");
+    if (result === "correct") {
+      $row.addClass("table-success");
+    } else if (result === "incorrect") {
+      $row.addClass("table-danger");
+    }
+
     triggerAutoSave();
   });
 }

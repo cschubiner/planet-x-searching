@@ -735,9 +735,19 @@
             </div>
             <div id="theories-section" class="row mb-3">
               <div class="col">
-                <div id="theories-header" class="row mb-2">
+                <div id="theories-header" class="row mb-2 align-items-center">
                   <div class="col-auto">
-                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Mark them when revealed and whether they were correct to help calculate your score."></i></h3>
+                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Theories advance toward Peer Review each theory phase. When they reach Peer Review, verify them in the app."></i></h3>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="advance-theories-btn"
+                      class="btn btn-sm btn-primary"
+                      title="Advance all submitted theories one step toward Peer Review"
+                    >
+                      <i class="bi bi-fast-forward-fill"></i> Advance Theories
+                    </button>
                   </div>
                   <div class="col-auto">
                     <button
@@ -759,15 +769,16 @@
                         <th scope="col" class="small-col">Player</th>
                         <th scope="col" class="small-col">Sector</th>
                         <th scope="col">Object</th>
-                        <th scope="col" class="small-col">Revealed</th>
-                        <th scope="col" class="small-col">Correct</th>
+                        <th scope="col" class="text-center" style="min-width: 120px;">Progress</th>
+                        <th scope="col" class="small-col text-center">Correct?</th>
                       </tr>
                     </thead>
                     <tbody id="theories-body"></tbody>
                   </table>
                 </div>
                 <div class="text-secondary small">
-                  Track your theories here. Use the iOS app to verify if correct.
+                  <strong>How it works:</strong> Submit a theory, then click "Advance Theories" each theory phase.
+                  When a theory reaches <span class="badge bg-danger">Peer Review</span>, verify it in the official app!
                 </div>
               </div>
             </div>
