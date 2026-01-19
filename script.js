@@ -235,11 +235,11 @@ function getCurrentState() {
     const player = $row.find(`input[name="${theoryId}-player"]:checked`).attr("value");
     const sector = $row.find(`#${theoryId}-sector`).val();
     const object = $row.find(`input[name="${theoryId}-object"]:checked`).attr("value");
-    const revealed = $row.find(`#${theoryId}-revealed`).prop("checked");
-    const correct = $row.find(`#${theoryId}-correct`).prop("checked");
+    const progress = parseInt($row.attr("data-progress") || "0");
+    const result = $row.find(`input[name="${theoryId}-result"]:checked`).val() || "pending";
 
-    if (player || sector || object || revealed || correct) {
-      state.theories.push({ player, sector, object, revealed, correct });
+    if (player || sector || object || progress > 0 || result !== "pending") {
+      state.theories.push({ player, sector, object, progress, result });
     }
   });
 
@@ -325,9 +325,20 @@ function clearCurrentState() {
 
   // Clear theories
   $(".theory-row").forEach(($row) => {
+    const theoryId = $row.getId();
     $row.find("input[type='radio']").prop("checked", false);
     $row.find("input[type='checkbox']").prop("checked", false);
     $row.find("select").val("");
+    // Reset progress to NOT_SUBMITTED
+    $row.attr("data-progress", "0");
+    $row.removeClass("table-success table-danger");
+    // Reset the result to pending
+    $row.find(`input[name="${theoryId}-result"][value="pending"]`).prop("checked", true);
+    // Reset the progress indicator
+    const $progressCell = $row.find(`#${theoryId}-progress`);
+    if ($progressCell.length > 0 && typeof createTheoryProgressIndicator === "function") {
+      $progressCell.empty().append(createTheoryProgressIndicator(theoryId, 0));
+    }
   });
 }
 
@@ -524,11 +535,36 @@ function restoreGameState(state) {
       if (theory.object) {
         $row.find(`input[name="${theoryId}-object"][value="${theory.object}"]`).prop("checked", true).trigger("change");
       }
-      if (theory.revealed) {
-        $row.find(`#${theoryId}-revealed`).prop("checked", true);
+
+      // Restore progress (new format)
+      if (theory.progress !== undefined && theory.progress > 0) {
+        updateTheoryProgress(theoryId, theory.progress);
       }
-      if (theory.correct) {
-        $row.find(`#${theoryId}-correct`).prop("checked", true);
+
+      // Restore result (new format)
+      if (theory.result && theory.result !== "pending") {
+        $row.find(`input[name="${theoryId}-result"][value="${theory.result}"]`).prop("checked", true);
+        // Apply row styling
+        if (theory.result === "correct") {
+          $row.addClass("table-success");
+        } else if (theory.result === "incorrect") {
+          $row.addClass("table-danger");
+        }
+      }
+
+      // Backwards compatibility: convert old revealed/correct to new format
+      if (theory.revealed !== undefined || theory.correct !== undefined) {
+        if (theory.correct) {
+          $row.find(`input[name="${theoryId}-result"][value="correct"]`).prop("checked", true);
+          $row.addClass("table-success");
+        } else if (theory.revealed) {
+          $row.find(`input[name="${theoryId}-result"][value="incorrect"]`).prop("checked", true);
+          $row.addClass("table-danger");
+        }
+        // Set progress to peer review if it was revealed
+        if (theory.revealed && (!theory.progress || theory.progress < 3)) {
+          updateTheoryProgress(theoryId, 3);
+        }
       }
     }
 
@@ -860,23 +896,23 @@ function isPrime(num) {
  * @param {number} totalTime - Cumulative time total
  * @param {number} trackSize - Size of the track (12 for standard, 18 for expert)
  * @returns {number} Position on track (1 to trackSize)
- * 
- * The track wraps around like a clock face. Players start at the maximum position
- * (12 or 18) and move clockwise. When reaching exact multiples of the track size,
- * players are at position 12/18, not position 0 (which doesn't exist on the track).
- * 
+ *
+ * The track wraps around like a clock face. Players start at position 1 and
+ * advance clockwise. After spending time, position = (time % trackSize) + 1.
+ *
  * Examples:
- * - getTrackPosition(0, 12) => 12  (start at position 12)
- * - getTrackPosition(11, 12) => 11
- * - getTrackPosition(12, 12) => 12 (completed one lap, at position 12)
- * - getTrackPosition(13, 12) => 1  (wrapped to position 1)
- * - getTrackPosition(14, 12) => 2  (e.g., from pos 11, advance 3)
+ * - getTrackPosition(0, 12) => 1   (start at position 1)
+ * - getTrackPosition(3, 12) => 4   (after 3 time, at position 4)
+ * - getTrackPosition(11, 12) => 12 (at position 12)
+ * - getTrackPosition(12, 12) => 1  (wrapped back to position 1)
+ * - getTrackPosition(13, 12) => 2  (wrapped to position 2)
  */
 function getTrackPosition(totalTime, trackSize) {
-  if (totalTime === 0) return trackSize; // Start at position 12 or 18
-  const position = totalTime % trackSize;
-  // Exact multiples stay at trackSize (not position 0, which doesn't exist)
-  return position === 0 ? trackSize : position;
+  // Players start at position 1 and advance clockwise
+  // After N time units, position = (N % trackSize) + 1
+  // This naturally wraps: 0->1, 1->2, ..., 11->12, 12->1
+  const position = (totalTime % trackSize) + 1;
+  return position > trackSize ? 1 : position;
 }
 
 function getUrl(settings = {}) {
@@ -901,6 +937,10 @@ function getUrl(settings = {}) {
 }
 
 function createObjectImage(object, attrs = {}) {
+  if (!object) {
+    console.warn("createObjectImage called with invalid object:", object);
+    return $("<span>").text("?");
+  }
   attrs.src = `images/${object}.png`;
   attrs.alt = object.toTitleCase();
   return $("<img>", attrs);
@@ -909,7 +949,7 @@ function createObjectImage(object, attrs = {}) {
 function toggleImageWhiteVariant(selector) {
   $(selector).on("change", (event) => {
     const name = $(event.target).attr("name");
-    $(`${selector}[name="${name}"]`).forEach(($input) => {
+    $(`input[name="${name}"]`).forEach(($input) => {
       let variant = "";
       if ($input.prop("checked")) {
         // set image to white variant
@@ -917,17 +957,159 @@ function toggleImageWhiteVariant(selector) {
       }
       const object = $input.val();
       const labelId = $input.getId() + "-label";
-      $(`#${labelId} img`).attr("src", `images/${object}${variant}.png`);
+      // Only update if we have a valid object value and label
+      if (object && labelId) {
+        const $img = $(`#${labelId} img`);
+        if ($img.length > 0) {
+          $img.attr("src", `images/${object}${variant}.png`);
+        }
+      }
     });
   });
 }
 
 let theoriesCounter = 0;
 
+// Theory progress states: 0 = Not submitted, 1 = Placed, 2 = Advanced, 3 = Peer Review
+const THEORY_PROGRESS = {
+  NOT_SUBMITTED: 0,
+  PLACED: 1,
+  ADVANCED: 2,
+  PEER_REVIEW: 3,
+};
+
+const THEORY_PROGRESS_LABELS = {
+  [THEORY_PROGRESS.NOT_SUBMITTED]: { label: "Not Submitted", class: "secondary", icon: "dash" },
+  [THEORY_PROGRESS.PLACED]: { label: "Placed", class: "info", icon: "1-circle-fill" },
+  [THEORY_PROGRESS.ADVANCED]: { label: "Advanced", class: "warning", icon: "2-circle-fill" },
+  [THEORY_PROGRESS.PEER_REVIEW]: { label: "Peer Review!", class: "danger", icon: "exclamation-triangle-fill" },
+};
+
+/** Creates the progress indicator element for a theory */
+function createTheoryProgressIndicator(theoryId, progress = THEORY_PROGRESS.NOT_SUBMITTED) {
+  const progressInfo = THEORY_PROGRESS_LABELS[progress];
+
+  // Create the visual progress track
+  const $container = $("<div>", { class: "theory-progress-container" });
+
+  // Progress dots
+  const $track = $("<div>", { class: "theory-progress-track d-flex align-items-center justify-content-center gap-1" });
+
+  for (let i = 1; i <= 3; i++) {
+    const isActive = progress >= i;
+    const isCurrent = progress === i;
+    let dotClass = "theory-progress-dot";
+
+    if (i === 3) {
+      // Peer review dot is special
+      dotClass += isActive ? " bg-danger" : " bg-secondary opacity-25";
+    } else if (i === 2) {
+      dotClass += isActive ? " bg-warning" : " bg-secondary opacity-25";
+    } else {
+      dotClass += isActive ? " bg-info" : " bg-secondary opacity-25";
+    }
+
+    if (isCurrent) {
+      dotClass += " current";
+    }
+
+    $track.append($("<span>", { class: dotClass }));
+
+    if (i < 3) {
+      // Add connector line between dots
+      const connectorClass = progress > i ? "theory-progress-connector active" : "theory-progress-connector";
+      $track.append($("<span>", { class: connectorClass }));
+    }
+  }
+
+  $container.append($track);
+
+  // Status badge
+  const $badge = $("<div>", {
+    class: `badge bg-${progressInfo.class} mt-1 theory-progress-badge`,
+    id: `${theoryId}-progress-badge`
+  }).append(
+    $("<i>", { class: `bi bi-${progressInfo.icon} me-1` }),
+    progressInfo.label
+  );
+
+  $container.append($badge);
+
+  return $container;
+}
+
+/** Updates the progress indicator for a theory */
+function updateTheoryProgress(theoryId, progress) {
+  const $cell = $(`#${theoryId}-progress`);
+  $cell.empty().append(createTheoryProgressIndicator(theoryId, progress));
+  $(`#${theoryId}`).attr("data-progress", progress);
+}
+
 /** Initializes the theories tracking table */
 function initializeTheoriesTable(playerColors, numSectors) {
   // Add initial empty row
   addTheoryRow(playerColors, numSectors);
+
+  // Set up advance theories button
+  $("#advance-theories-btn").on("click", () => {
+    advanceAllTheories(playerColors, numSectors);
+  });
+}
+
+/** Advances all submitted theories one step toward peer review */
+function advanceAllTheories(playerColors, numSectors) {
+  let theoriesAdvanced = 0;
+  let theoriesReachedPeerReview = 0;
+
+  $(".theory-row").each(function() {
+    const $row = $(this);
+    const theoryId = $row.attr("id");
+    const currentProgress = parseInt($row.attr("data-progress") || "0");
+
+    // Skip if not submitted or already at peer review
+    if (currentProgress === THEORY_PROGRESS.NOT_SUBMITTED || currentProgress >= THEORY_PROGRESS.PEER_REVIEW) {
+      return;
+    }
+
+    // Check if theory has required fields filled
+    const hasPlayer = $row.find(`input[name="${theoryId}-player"]:checked`).length > 0;
+    const hasSector = $(`#${theoryId}-sector`).val() !== "";
+    const hasObject = $row.find(`input[name="${theoryId}-object"]:checked`).length > 0;
+
+    if (!hasPlayer || !hasSector || !hasObject) {
+      return; // Skip incomplete theories
+    }
+
+    // Advance the theory
+    const newProgress = currentProgress + 1;
+    updateTheoryProgress(theoryId, newProgress);
+    theoriesAdvanced++;
+
+    if (newProgress === THEORY_PROGRESS.PEER_REVIEW) {
+      theoriesReachedPeerReview++;
+      // Highlight the row
+      $row.addClass("table-danger");
+    }
+  });
+
+  // Remove the theory-phase-pending highlight since user clicked the button
+  const $btn = $("#advance-theories-btn");
+  $btn.removeClass("theory-phase-pending");
+
+  // Show feedback
+  if (theoriesAdvanced > 0) {
+    let message = `Advanced ${theoriesAdvanced} theor${theoriesAdvanced === 1 ? 'y' : 'ies'}!`;
+    if (theoriesReachedPeerReview > 0) {
+      message += ` ${theoriesReachedPeerReview} reached Peer Review - verify in the app!`;
+    }
+    // Brief visual feedback
+    $btn.addClass("btn-success").removeClass("btn-primary");
+    setTimeout(() => {
+      $btn.addClass("btn-primary").removeClass("btn-success");
+    }, 1000);
+  }
+
+  triggerAutoSave();
 }
 
 /** Adds a row to the theories table */
@@ -938,7 +1120,7 @@ function addTheoryRow(playerColors, numSectors) {
   const theoryObjects = ["asteroid", "comet", "dwarf-planet", "gas-cloud"];
 
   $("#theories-body").append(
-    $("<tr>", { id: theoryId, class: "theory-row", new: "true" }).append(
+    $("<tr>", { id: theoryId, class: "theory-row", new: "true", "data-progress": "0" }).append(
       // Player column
       $("<td>").append(
         BootstrapHtml.radioButtonGroup(
@@ -970,23 +1152,57 @@ function addTheoryRow(playerColors, numSectors) {
           { elementAccent: "secondary" }
         )
       ),
-      // Revealed column
-      $("<td>", { class: "text-center" }).append(
-        $("<input>", {
-          type: "checkbox",
-          id: `${theoryId}-revealed`,
-          class: "form-check-input theory-checkbox",
-          theory: theoryId,
-        })
+      // Progress column
+      $("<td>", { id: `${theoryId}-progress`, class: "text-center" }).append(
+        createTheoryProgressIndicator(theoryId, THEORY_PROGRESS.NOT_SUBMITTED)
       ),
-      // Correct column
+      // Correct column (combined revealed + correct)
       $("<td>", { class: "text-center" }).append(
-        $("<input>", {
-          type: "checkbox",
-          id: `${theoryId}-correct`,
-          class: "form-check-input theory-checkbox",
-          theory: theoryId,
-        })
+        $("<div>", { class: "btn-group btn-group-sm", role: "group" }).append(
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-pending`,
+            value: "pending",
+            autocomplete: "off",
+            checked: true,
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-secondary",
+            for: `${theoryId}-pending`,
+            title: "Pending verification",
+          }).append($("<i>", { class: "bi bi-hourglass-split" })),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-correct`,
+            value: "correct",
+            autocomplete: "off",
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-success",
+            for: `${theoryId}-correct`,
+            title: "Correct!",
+          }).append($("<i>", { class: "bi bi-check-lg" })),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `${theoryId}-result`,
+            id: `${theoryId}-incorrect`,
+            value: "incorrect",
+            autocomplete: "off",
+            theory: theoryId,
+          }),
+          $("<label>", {
+            class: "btn btn-outline-danger",
+            for: `${theoryId}-incorrect`,
+            title: "Incorrect",
+          }).append($("<i>", { class: "bi bi-x-lg" }))
+        )
       )
     )
   );
@@ -994,13 +1210,37 @@ function addTheoryRow(playerColors, numSectors) {
   // Toggle white image variant for object selection
   toggleImageWhiteVariant(`input[name="${theoryId}-object"]`);
 
-  // Add new row when this one is changed
+  // When theory details are filled in, auto-set progress to PLACED if still NOT_SUBMITTED
   $(`[theory="${theoryId}"]`).on("change", (event) => {
     const $row = $(`#${theoryId}`);
+
+    // Auto-add new row
     if ($row.attr("new")) {
       $row.attr("new", null);
       addTheoryRow(playerColors, numSectors);
     }
+
+    // Auto-set progress to PLACED when all fields are filled
+    const currentProgress = parseInt($row.attr("data-progress") || "0");
+    if (currentProgress === THEORY_PROGRESS.NOT_SUBMITTED) {
+      const hasPlayer = $row.find(`input[name="${theoryId}-player"]:checked`).length > 0;
+      const hasSector = $(`#${theoryId}-sector`).val() !== "";
+      const hasObject = $row.find(`input[name="${theoryId}-object"]:checked`).length > 0;
+
+      if (hasPlayer && hasSector && hasObject) {
+        updateTheoryProgress(theoryId, THEORY_PROGRESS.PLACED);
+      }
+    }
+
+    // Update row styling based on result
+    const result = $(`input[name="${theoryId}-result"]:checked`).val();
+    $row.removeClass("table-success table-danger");
+    if (result === "correct") {
+      $row.addClass("table-success");
+    } else if (result === "incorrect") {
+      $row.addClass("table-danger");
+    }
+
     triggerAutoSave();
   });
 }
@@ -1076,6 +1316,7 @@ function startGame(gameSettings) {
           BootstrapHtml.buttonGroup(
             [
               { hint: "no", accent: "danger", icon: "x-lg" },
+              { hint: "suspect", accent: "info", icon: "exclamation-lg" },
               { hint: "yes", accent: "success", icon: "check-lg" },
             ].map(({ hint, accent, icon }) =>
               BootstrapHtml.toggleButton(
@@ -1810,6 +2051,7 @@ function addMoveRow() {
     );
 
     calcSurveyCost({ start: startValue, setText: true });
+    updateTimeTrack(); // Update position display immediately when sector changes
 
     const $newEndSelect = $(`#${surveySectorEndSelectId}`);
     $newEndSelect.toggleClass("is-invalid", invalidIsSelected);
@@ -1824,6 +2066,7 @@ function addMoveRow() {
       const endSector = Number(endValue);
 
       calcSurveyCost({ end: endSector, setText: true });
+      updateTimeTrack(); // Update position display immediately when sector changes
 
       // mark as invalid if not a prime number
       $endSelect.toggleClass("is-invalid", isComet && !isPrime(endSector));
@@ -2206,9 +2449,11 @@ $(() => {
       return $button.hasClass("active");
     }
 
+    // Returns: true (yes/confirmed), false (no/ruled out), "suspect" (suspected), null (blank)
     function getHintValue(hintName) {
       if (isActive($(`#${hintName}-yes`))) return true;
       if (isActive($(`#${hintName}-no`))) return false;
+      if (isActive($(`#${hintName}-suspect`))) return "suspect";
       return null;
     }
 
@@ -2218,7 +2463,7 @@ $(() => {
         .join("");
       let numHints = 0;
       const hintsValues = {};
-      const hintsByValue = { yes: [], no: [], blank: [] };
+      const hintsByValue = { yes: [], no: [], suspect: [], blank: [] };
       $(`.hint-btn-group${attrsFilterStr}`).forEach(($element) => {
         const hintName = $element.attr("hintName");
         if (hintName in hintsValues) return;
@@ -2226,6 +2471,7 @@ $(() => {
         let addToKey;
         if (value === true) addToKey = "yes";
         else if (value === false) addToKey = "no";
+        else if (value === "suspect") addToKey = "suspect";
         else addToKey = "blank";
         numHints++;
         hintsValues[hintName] = value;
@@ -2237,11 +2483,15 @@ $(() => {
     const BG_COLOR_CLASSES = {
       success: "table-success",
       danger: "table-danger",
+      warning: "table-warning",
+      info: "table-info",
       disabled: "table-secondary",
     };
     const TEXT_COLOR_CLASSES = {
       success: "text-success",
       danger: "text-danger",
+      warning: "text-warning",
+      info: "text-info",
     };
     $(".hint-btn").on({
       activate: (event) => {
@@ -2266,11 +2516,45 @@ $(() => {
         const $hintBtn = $(event.currentTarget);
         $hintBtn.trigger("toggleActive");
 
+        const clickedHint = $hintBtn.attr("hint");
+        const clickedHintName = $hintBtn.attr("hintName");
+        const sector = $hintBtn.attr("sector");
+        const isNowActive = isActive($hintBtn);
+
+        // AUTO-MARK: When clicking "yes" (confirming an object), mark all
+        // OTHER objects in that sector as "no" since only one thing can
+        // be in each sector. This happens before autoSave so it's all
+        // grouped into a single undo action.
+        if (clickedHint === "yes" && isNowActive) {
+          // Get all hint buttons in this sector and mark the non-confirmed ones as "no"
+          $(`.hint-btn[sector="${sector}"]`).forEach(($btn) => {
+            const btnHintName = $btn.attr("hintName");
+            const btnHint = $btn.attr("hint");
+            // Skip the button we just clicked (it's already set to "yes")
+            if (btnHintName === clickedHintName) return;
+            // Skip buttons that are already "no"
+            if (btnHint === "no" && isActive($btn)) return;
+            // Mark as "no" if not already
+            if (btnHint === "no") {
+              $btn.trigger("activate");
+            } else if (isActive($btn)) {
+              // Deactivate any "suspect" or other states
+              $btn.trigger("deactivate");
+              // Then activate the "no" button for this hint
+              $(`#${btnHintName}-no`).trigger("activate");
+            } else {
+              // Not active, just activate the "no" button
+              $(`#${btnHintName}-no`).trigger("activate");
+            }
+          });
+        }
+
         // update the hint cell colors for this object (must be within a limit)
         const object = $hintBtn.attr("object");
         const objectHints = getHintValues({ object });
         const numYesObjects = objectHints.yes.length;
-        const numBlankObjects = objectHints.blank.length;
+        // "suspect" and "blank" are both possibilities (not confirmed, not ruled out)
+        const numPossibleObjects = objectHints.blank.length + objectHints.suspect.length;
         // update count text and cell color
         const limit =
           MODE_SETTINGS[currentGameSettings.mode].objects[object].count;
@@ -2287,10 +2571,10 @@ $(() => {
           //   columns: each column would have to be checked to understand its
           //   state, which would be checking the entire table. that's _okay_,
           //   but not ideal.
-        } else if (numYesObjects + numBlankObjects === limit) {
+        } else if (numYesObjects + numPossibleObjects === limit) {
           // exactly enough buttons left to fulfill the limit
           cellClass = "success";
-        } else if (numYesObjects + numBlankObjects < limit) {
+        } else if (numYesObjects + numPossibleObjects < limit) {
           // not enough buttons left to fulfill the limit
           cellClass = "danger";
         }
@@ -2301,11 +2585,11 @@ $(() => {
 
         // update the hint cell colors for this sector (must be exactly one
         // object per sector)
-        const sector = $hintBtn.attr("sector");
         const sectorHints = getHintValues({ sector });
         const numYesSectors = sectorHints.yes.length;
-        const numBlankSectors = sectorHints.blank.length;
-        if (numYesSectors + numBlankSectors === 0) {
+        // "suspect" and "blank" are both possibilities
+        const numPossibleSectors = sectorHints.blank.length + sectorHints.suspect.length;
+        if (numYesSectors + numPossibleSectors === 0) {
           // entire sector is marked as "no", which is bad
           for (const hintName of Object.keys(sectorHints.hints)) {
             $(`#${hintName}-cell`).chooseClass(BG_COLOR_CLASSES, "danger");
@@ -2326,6 +2610,9 @@ $(() => {
               classKey = hintYesClassKey;
             } else if (value === false) {
               classKey = "disabled";
+            } else if (value === "suspect") {
+              // suspected but not confirmed - show info/blue color
+              classKey = "info";
             } else {
               // blank hint
               if (setRestNo) {
@@ -3106,10 +3393,16 @@ function showTheoryPhaseAlert(sector) {
         <ol class="mb-0">
           <li>Each player can submit <strong>${maxTheories} ${maxTheories === 1 ? 'theory' : 'theories'}</strong> this phase</li>
           <li>Choose a sector and object type you're confident about</li>
-          <li>Submit your theory in the official app</li>
-          <li>Record theories in the <strong>Theory Tracking</strong> section below</li>
-          <li>Wait for <strong>Peer Review</strong> to see if your theory is correct!</li>
+          <li>Submit your theory in the <strong>official Planet X app</strong></li>
+          <li>Record your theory in the <strong>Theory Tracking</strong> section below</li>
+          <li>Click <strong><i class="bi bi-fast-forward-fill"></i> Advance Theories</strong> to move all submitted theories one step closer to Peer Review!</li>
         </ol>
+      </div>
+      <div class="alert alert-success text-start">
+        <i class="bi bi-arrow-right-circle"></i>
+        <strong>Next Step:</strong> After recording your theories, click the
+        <span class="badge bg-primary"><i class="bi bi-fast-forward-fill"></i> Advance Theories</span>
+        button to progress them toward Peer Review.
       </div>
       <div class="alert alert-warning text-start">
         <i class="bi bi-exclamation-triangle"></i>
@@ -3134,7 +3427,7 @@ function showTheoryPhaseAlert(sector) {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-              Got it!
+              Got it - I'll submit my theories!
             </button>
           </div>
         </div>
@@ -3152,8 +3445,13 @@ function showTheoryPhaseAlert(sector) {
   const modal = new bootstrap.Modal(document.getElementById("theory-phase-alert-modal"));
   modal.show();
 
-  // Clean up after modal is hidden
+  // Highlight the Advance Theories button when modal is dismissed
   $("#theory-phase-alert-modal").on("hidden.bs.modal", function () {
     $(this).remove();
+    // Add pulsing highlight to the Advance Theories button
+    const $advanceBtn = $("#advance-theories-btn");
+    $advanceBtn.addClass("theory-phase-pending");
+    // Scroll to the theories section
+    document.getElementById("theories-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 }

@@ -297,15 +297,33 @@
                 <div class="tutorial-step d-none" data-step="8">
                   <h4>Theories & Scoring</h4>
                   <p>Submit <strong>theories</strong> about object locations to score points!</p>
-                  <h5>Points per correct theory:</h5>
+
+                  <h5><i class="bi bi-clock-history"></i> Theory Phases</h5>
+                  <p>During the game, <strong>theory phases</strong> trigger automatically when the visible sky reaches certain positions. When this happens:</p>
+                  <ol>
+                    <li>A popup will alert you that a theory phase has started</li>
+                    <li>Submit your theory in the <strong>official Planet X app</strong></li>
+                    <li>Record your theory in the <strong>Theory Tracking</strong> section</li>
+                    <li>Click <span class="badge bg-primary"><i class="bi bi-fast-forward-fill"></i> Advance Theories</span> to progress all theories</li>
+                  </ol>
+
+                  <h5><i class="bi bi-arrow-right-circle"></i> Theory Progress</h5>
+                  <p>Theories move through 3 stages:</p>
+                  <ul>
+                    <li><span class="badge bg-info">Placed</span> - Just submitted</li>
+                    <li><span class="badge bg-warning text-dark">Advanced</span> - Getting closer to review</li>
+                    <li><span class="badge bg-danger">Peer Review!</span> - Verify in the app now!</li>
+                  </ul>
+                  <p>When a theory reaches <strong>Peer Review</strong>, check the official app to see if it's correct!</p>
+
+                  <h5><i class="bi bi-trophy"></i> Scoring</h5>
                   <ul>
                     <li><img src="images/asteroid.png" alt="Asteroid" class="tutorial-inline-img"> Asteroid: 2 points</li>
                     <li><img src="images/comet.png" alt="Comet" class="tutorial-inline-img"> Comet: 3 points</li>
                     <li><img src="images/gas-cloud.png" alt="Gas Cloud" class="tutorial-inline-img"> Gas Cloud: 4 points</li>
-                    <li><img src="images/dwarf-planet.png" alt="Dwarf Planet" class="tutorial-inline-img"> Dwarf Planet: 4 points (Standard) / 2 points (Expert)</li>
+                    <li><img src="images/dwarf-planet.png" alt="Dwarf Planet" class="tutorial-inline-img"> Dwarf Planet: 4 pts (Standard) / 2 pts (Expert)</li>
                     <li><img src="images/planet-x.png" alt="Planet X" class="tutorial-inline-img"> First to Locate Planet X: 10 points</li>
                   </ul>
-                  <p>Use the <strong>Theory Tracking</strong> section to record your submitted theories!</p>
                 </div>
 
                 <!-- Step 9: Research & Conferences -->
@@ -735,9 +753,19 @@
             </div>
             <div id="theories-section" class="row mb-3">
               <div class="col">
-                <div id="theories-header" class="row mb-2">
+                <div id="theories-header" class="row mb-2 align-items-center">
                   <div class="col-auto">
-                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Mark them when revealed and whether they were correct to help calculate your score."></i></h3>
+                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Theories advance toward Peer Review each theory phase. When they reach Peer Review, verify them in the app."></i></h3>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="advance-theories-btn"
+                      class="btn btn-sm btn-primary"
+                      title="Advance all submitted theories one step toward Peer Review"
+                    >
+                      <i class="bi bi-fast-forward-fill"></i> Advance Theories
+                    </button>
                   </div>
                   <div class="col-auto">
                     <button
@@ -759,15 +787,16 @@
                         <th scope="col" class="small-col">Player</th>
                         <th scope="col" class="small-col">Sector</th>
                         <th scope="col">Object</th>
-                        <th scope="col" class="small-col">Revealed</th>
-                        <th scope="col" class="small-col">Correct</th>
+                        <th scope="col" class="text-center" style="min-width: 120px;">Progress</th>
+                        <th scope="col" class="small-col text-center">Correct?</th>
                       </tr>
                     </thead>
                     <tbody id="theories-body"></tbody>
                   </table>
                 </div>
                 <div class="text-secondary small">
-                  Track your theories here. Use the iOS app to verify if correct.
+                  <strong>How it works:</strong> Submit a theory, then click "Advance Theories" each theory phase.
+                  When a theory reaches <span class="badge bg-danger">Peer Review</span>, verify it in the official app!
                 </div>
               </div>
             </div>

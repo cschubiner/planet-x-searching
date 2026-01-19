@@ -691,3 +691,139 @@ textarea {
 .player-pawn:hover .player-pawn-inner {
   transform: scale(1.2);
 }
+
+/* ========== Theory Progress Tracking Styles ========== */
+
+.theory-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.theory-progress-track {
+  margin-bottom: 0.25rem;
+}
+
+.theory-progress-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.theory-progress-dot.current {
+  transform: scale(1.3);
+  box-shadow: 0 0 8px currentColor;
+}
+
+.theory-progress-dot.bg-info {
+  box-shadow: 0 0 6px rgba(13, 202, 240, 0.5);
+}
+
+.theory-progress-dot.bg-warning {
+  box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
+}
+
+.theory-progress-dot.bg-danger {
+  box-shadow: 0 0 6px rgba(220, 53, 69, 0.5);
+}
+
+.theory-progress-dot.current.bg-info {
+  box-shadow: 0 0 12px rgba(13, 202, 240, 0.8);
+  animation: pulse-info 1.5s ease-in-out infinite;
+}
+
+.theory-progress-dot.current.bg-warning {
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.8);
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+.theory-progress-dot.current.bg-danger {
+  box-shadow: 0 0 12px rgba(220, 53, 69, 0.8);
+  animation: pulse-danger 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-info {
+  0%, 100% { box-shadow: 0 0 8px rgba(13, 202, 240, 0.5); }
+  50% { box-shadow: 0 0 16px rgba(13, 202, 240, 0.9); }
+}
+
+@keyframes pulse-warning {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 193, 7, 0.5); }
+  50% { box-shadow: 0 0 16px rgba(255, 193, 7, 0.9); }
+}
+
+@keyframes pulse-danger {
+  0%, 100% { box-shadow: 0 0 8px rgba(220, 53, 69, 0.5); }
+  50% { box-shadow: 0 0 16px rgba(220, 53, 69, 0.9); }
+}
+
+.theory-progress-connector {
+  width: 16px;
+  height: 3px;
+  background-color: var(--bs-secondary);
+  opacity: 0.25;
+  display: inline-block;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.theory-progress-connector.active {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--bs-info), var(--bs-warning));
+}
+
+.theory-progress-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* Highlight row animation when theory reaches peer review */
+.theory-row.table-danger {
+  animation: peer-review-alert 0.5s ease-in-out;
+}
+
+@keyframes peer-review-alert {
+  0%, 100% { background-color: inherit; }
+  50% { background-color: rgba(220, 53, 69, 0.3); }
+}
+
+/* Advance button styling */
+#advance-theories-btn {
+  transition: all 0.3s ease;
+}
+
+#advance-theories-btn:hover {
+  transform: scale(1.05);
+}
+
+#advance-theories-btn.btn-success {
+  animation: advance-success 0.3s ease;
+}
+
+@keyframes advance-success {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Pulsing highlight for Advance Theories button when theory phase is pending */
+#advance-theories-btn.theory-phase-pending {
+  animation: theory-phase-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);
+}
+
+@keyframes theory-phase-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(13, 110, 253, 0.8);
+    transform: scale(1.08);
+  }
+}

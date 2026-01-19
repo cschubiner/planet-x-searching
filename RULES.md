@@ -99,45 +99,131 @@ Attempt to find Planet X by specifying:
 
 ## Theories
 
-Throughout the game, you can submit **theories** about where objects are located. Theories are how you score points!
+Throughout the game, you can submit **theories** about where objects are located. Theories are how you score points beyond locating Planet X!
+
+### How Theory Tokens Work
+
+Each player has a set of **theory tokens** showing different celestial objects (Asteroid, Comet, Dwarf Planet, Gas Cloud). You'll place these face-down on the board to claim what you believe is in each sector.
 
 ### Theory Phases
-At designated points on the time track, **theory phases** occur:
-1. All players simultaneously place theory tokens face-down
-2. Tokens are revealed one at a time (furthest back first)
-3. Each theory is verified via the app
-4. Correct theories stay on the board; incorrect ones are removed
 
-### Theory Scoring
-When theories are revealed at the end:
-- **First Correct Theory:** 1 bonus point per sector where you were first
-- **Asteroid:** 2 points each
-- **Comet:** 3 points each
-- **Gas Cloud:** 4 points each
-- **Dwarf Planet:** 4 points (Standard) or 2 points (Expert)
+Theory phases are triggered when the Earth marker passes a **theory icon** on the time track. During a theory phase:
+
+1. **Select Theories**: Each player secretly chooses up to one theory token (or two in Expert Mode) and places it face-down in front of their player screen.
+
+2. **Place Theories**: In turn order (furthest behind on time track goes first), players place their theory tokens on the **outermost square** of their chosen sector. You can only place theories in sectors where the content hasn't been revealed yet. Multiple theories can be stacked in the same sector.
+
+3. **Advance Theories**: Once all theories are placed, **all theory tokens on the board advance one square toward the center**.
+
+4. **Peer Review**: When a theory token reaches the **innermost (red) square**, it undergoes peer review:
+   - The token is flipped face-up to reveal the player's guess
+   - The app verifies if the theory is correct
+   - **If correct**: The token stays face-up for final scoring. All other tokens in that sector are also revealed—correct ones stay, incorrect ones are removed.
+   - **If incorrect**: The token is removed from the game, and the player who placed it receives a **1 time penalty**. Other players can now rule out that object in that sector.
+
+### Important Theory Rules
+
+- Once a theory has been confirmed correct in a sector, no more theories can be submitted for that sector
+- You don't have to submit a theory every theory phase
+- The penalty for incorrect theories is small (just 1 time), so don't be afraid to make educated guesses!
+
+### Theory Scoring (End of Game)
+
+| Object | Points per Correct Theory |
+|--------|--------------------------|
+| **Asteroid** | 2 points |
+| **Comet** | 3 points |
+| **Gas Cloud** | 4 points |
+| **Dwarf Planet** | 4 points (Standard) / 2 points (Expert) |
+| **First Bonus** | +1 point for each sector where you were the first (or tied for first) to submit the correct theory |
 
 ## Conferences
 
-When a player reaches certain time thresholds, a **conference** is triggered:
+Conferences are special events where all astronomers gather to share discoveries about Planet X. Unlike other actions, conferences have **no time cost**—everyone benefits equally!
 
-### Standard Mode
-- **X1 Conference:** At time 12
+### When Conferences Occur
 
-### Expert Mode
-- **X1 Conference:** At time 10
-- **X2 Conference:** At time 22
+| Mode | Conference | Time Threshold |
+|------|------------|----------------|
+| **Standard** | X1 | Time 12 |
+| **Expert** | X1 | Time 10 |
+| **Expert** | X2 | Time 22 |
 
-During a conference, the app reveals information about Planet X's relationship to nearby objects.
+A conference is triggered the **first time any player's Earth marker reaches or passes** the conference threshold.
+
+### What Conferences Reveal
+
+During a conference, one player selects "Planet X Conference" in the app and **reads aloud** the information to all players. The app reveals a **logic rule specific to Planet X's location** in this game, such as:
+
+- "Planet X is within 2 sectors of a Gas Cloud"
+- "Planet X is not adjacent to any Asteroids"
+- "Planet X is opposite a Comet"
+
+These clues help narrow down Planet X's possible locations by relating it to other objects you may have already found.
+
+### Recording Conference Information
+
+- Record X1 conference info in the X1 section of your notes
+- Record X2 conference info (Expert only) in the X2 section
+- This information is public—everyone knows the same conference clues
+
+### Strategic Value of Conferences
+
+Conference clues are extremely valuable because:
+1. They directly relate to Planet X (unlike research, which is about other objects)
+2. They're free (no time cost)
+3. Combined with your other deductions, they can significantly narrow down Planet X's location
 
 ## End Game
 
-The game ends when a player correctly locates Planet X:
+The game ends when a player correctly locates Planet X. Here's exactly what happens:
 
-1. **Finder scores 10 points** for locating Planet X
-2. Other players get one final action (another locate attempt OR submit theories)
-3. Players who also correctly locate Planet X score points based on how far behind they are on the time track
-4. All theories are revealed and scored
-5. **Highest total score wins!**
+### 1. Planet X Located!
+
+When you correctly identify:
+- The sector containing Planet X
+- The objects in both adjacent sectors
+
+You score **10 points** and trigger the endgame. Your Earth marker advances 5 spaces to mark your position.
+
+### 2. Final Actions for Other Players
+
+Players who haven't found Planet X yet get **one final action** based on how far behind they are on the time track:
+
+| Sectors Behind | Final Action Options |
+|----------------|---------------------|
+| 1-3 sectors behind | Submit 1 theory OR attempt to Locate Planet X |
+| 4+ sectors behind | Submit 2 theories OR attempt to Locate Planet X |
+
+### 3. Additional Planet X Discoveries
+
+Other players who successfully locate Planet X during their final action score points based on their position:
+
+| Position | Points for Locating Planet X |
+|----------|------------------------------|
+| First to locate | 10 points |
+| 2 sectors behind first | 8 points |
+| 4 sectors behind first | 6 points |
+| 6 sectors behind first | 4 points |
+| 8+ sectors behind first | 2 points |
+
+### 4. Final Scoring
+
+After all final actions are complete:
+
+1. **Reveal all remaining theory tokens** on the board
+2. **Remove incorrect theories** (no additional penalty at end of game)
+3. **Calculate scores:**
+   - Planet X location points (as above)
+   - First theory bonuses (+1 per sector where you were first)
+   - Correct theory points (Asteroids: 2, Comets: 3, Gas Clouds: 4, Dwarf Planets: 4/2)
+
+### 5. Determining the Winner
+
+- **Highest total score wins!**
+- **Tiebreaker 1:** Most points from Planet X
+- **Tiebreaker 2:** Most points from first theory bonuses
+- **Tiebreaker 3:** Share the victory!
 
 ## Strategy Tips
 
