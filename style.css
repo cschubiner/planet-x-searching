@@ -210,6 +210,9 @@ textarea {
   cursor: help;
   opacity: 0.7;
   transition: opacity 0.2s;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .section-help:hover {

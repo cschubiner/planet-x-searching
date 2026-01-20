@@ -1828,13 +1828,17 @@ function addMoveRow() {
       );
 
       // Check for theory phase triggers
+      const newTheorySectors = [];
       (theorySectorsTriggered || []).forEach((sector) => {
         const theoryKey = `theory-sector-${sector}-shown`;
         if (!sessionStorage.getItem(theoryKey)) {
           sessionStorage.setItem(theoryKey, "true");
-          showTheoryPhaseAlert(sector);
+          newTheorySectors.push(sector);
         }
       });
+      if (newTheorySectors.length > 0) {
+        enqueueTheoryPhases(newTheorySectors);
+      }
     }
 
     // Auto-save on move changes
@@ -2424,6 +2428,10 @@ $(() => {
     function isActive($button) {
       return $button.hasClass("active");
     }
+    function setHintActive($button, active) {
+      $button.toggleClass("active", active);
+      $button.attr("aria-pressed", active ? "true" : "false");
+    }
 
     // Returns: true (yes/confirmed), false (no/ruled out), "suspect" (suspected), null (blank)
     function getHintValue(hintName) {
@@ -2472,7 +2480,7 @@ $(() => {
     $(".hint-btn").on({
       activate: (event) => {
         const $hintBtn = $(event.currentTarget);
-        $hintBtn.addClass("active");
+        setHintActive($hintBtn, true);
         // deactivate the other one
         const hintName = $hintBtn.attr("hintName");
         const hint = $hintBtn.attr("hint");
@@ -2482,7 +2490,7 @@ $(() => {
       },
       deactivate: (event) => {
         const $hintBtn = $(event.currentTarget);
-        $hintBtn.removeClass("active");
+        setHintActive($hintBtn, false);
       },
       toggleActive: (event) => {
         const $hintBtn = $(event.currentTarget);
@@ -2558,6 +2566,17 @@ $(() => {
         $(`#${object}-count`)
           .text(numYesObjects)
           .chooseClass(TEXT_COLOR_CLASSES, countClass);
+
+        // If all instances of this object are confirmed, mark the rest as "no"
+        if (numYesObjects === limit) {
+          for (const [hintName, value] of Object.entries(objectHints.hints)) {
+            if (value === true) continue;
+            const $noBtn = $(`#${hintName}-no`);
+            if ($noBtn.length && !isActive($noBtn)) {
+              $noBtn.trigger("activate");
+            }
+          }
+        }
 
         // update the hint cell colors for this sector (must be exactly one
         // object per sector)
@@ -2860,6 +2879,15 @@ function initializeTutorial() {
   // Initialize Bootstrap tooltips for section help icons
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
   tooltipTriggerList.forEach((tooltipTriggerEl) => {
+    if (
+      !tooltipTriggerEl.getAttribute("title") &&
+      !tooltipTriggerEl.getAttribute("data-bs-title")
+    ) {
+      tooltipTriggerEl.setAttribute("title", "Help");
+    }
+    if (!tooltipTriggerEl.hasAttribute("tabindex")) {
+      tooltipTriggerEl.setAttribute("tabindex", "0");
+    }
     new bootstrap.Tooltip(tooltipTriggerEl);
   });
 
@@ -2914,9 +2942,26 @@ let circularBoardState = {
   numSectors: 12,
   rotation: 0,
   visibleSkyStart: 1,
+  lastEarthSector: 1,
   showVisibleSky: true,
   selectedSector: null,
 };
+let pendingTheorySectors = [];
+let isTheoryModalActive = false;
+
+function enqueueTheoryPhases(sectors) {
+  const next = sectors.filter((sector) => !pendingTheorySectors.includes(sector));
+  if (next.length === 0) return;
+  pendingTheorySectors.push(...next);
+  processTheoryQueue();
+}
+
+function processTheoryQueue() {
+  if (isTheoryModalActive || pendingTheorySectors.length === 0) return;
+  const sector = pendingTheorySectors.shift();
+  isTheoryModalActive = true;
+  showTheoryPhaseAlert(sector);
+}
 
 function getVisibleSkyRange(start, numSectors) {
   const visibleCount = Math.floor(numSectors / 2);
@@ -2950,17 +2995,14 @@ function updateVisibleSkyDetails() {
     circularBoardState.visibleSkyStart,
     numSectors
   );
-  const summary = `Visible sky starts at sector ${start} (furthest-back player) and spans ${visibleCount} sectors clockwise to sector ${end}.`;
+  const summary = `Visible sky starts at sector ${start} (Earth arrow / furthest-back player) and spans ${visibleCount} sectors clockwise to sector ${end}.`;
   $("#visible-sky-details").text(summary);
   $("#visible-sky-summary").text(summary);
   updateVisibleSkyIndicator();
 }
 
 function getEarthSectorFromTime(totalTime, numSectors) {
-  const maxTimeOnBoard = numSectors <= 12 ? 24 : 36;
-  const timeToSectorRatio = numSectors / maxTimeOnBoard;
-  const rawSector = Math.floor(totalTime * timeToSectorRatio);
-  return ((rawSector % numSectors) + numSectors) % numSectors + 1;
+  return getTrackPosition(totalTime, numSectors);
 }
 
 function getSectorsPassedClockwise(previousSector, nextSector, numSectors) {
@@ -2984,6 +3026,7 @@ function initializeCircularBoard(numSectors) {
   circularBoardState.numSectors = numSectors;
   circularBoardState.rotation = 0;
   circularBoardState.visibleSkyStart = 1;
+  circularBoardState.lastEarthSector = 1;
   circularBoardState.selectedSector = null;
 
   const $board = $("#circular-board");
@@ -3273,7 +3316,7 @@ function hookCircularBoardToHints() {
 function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
   const $board = $("#circular-board");
   const numSectors = circularBoardState.numSectors;
-  const maxTimeOnBoard = numSectors <= 12 ? 24 : 36; // Standard mode max ~24, Expert mode max ~36
+  const trackSize = numSectors; // Time track wraps once per sector count
 
   // Remove existing player pawns
   $board.find(".player-pawn").remove();
@@ -3289,7 +3332,8 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
 
     // Calculate position based on time (like a clock, starting at 12 o'clock)
     // Time 0 = 12 o'clock (top), increasing clockwise
-    const angle = (time / maxTimeOnBoard) * 2 * Math.PI - Math.PI / 2;
+    const position = getTrackPosition(time, trackSize);
+    const angle = ((position - 1) / trackSize) * 2 * Math.PI - Math.PI / 2;
     const x = Math.cos(angle) * radius + boardSize / 2;
     const y = Math.sin(angle) * radius + boardSize / 2;
 
@@ -3315,32 +3359,35 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
   // Auto-rotate visible sky to align with the furthest back player (lowest time)
   // The visible sky should show where the "Earth" is in its orbit
   // In the physical game, the Earth disc rotates to align with the furthest back player
-  const earthSector = Number.isFinite(minTime) ? getEarthSectorFromTime(minTime, numSectors) : 1;
+  const earthSector = Number.isFinite(minTime)
+    ? getEarthSectorFromTime(minTime, numSectors)
+    : 1;
 
   // Update visible sky to start at this sector
   const newVisibleSkyStart = ((earthSector - 1) % numSectors) + 1;
-  const previousVisibleSkyStart = circularBoardState.visibleSkyStart;
+  const previousEarthSector = circularBoardState.lastEarthSector;
   const theorySectorsTriggered = [];
 
   if (circularBoardState.visibleSkyStart !== newVisibleSkyStart) {
     circularBoardState.visibleSkyStart = newVisibleSkyStart;
     updateVisibleSky();
+  }
 
-    // Check if we crossed a theory sector
-    const mode = currentGameSettings.mode;
-    const theorySectors = MODE_SETTINGS[mode]?.theorySectors || [];
-
-    const passedSectors = getSectorsPassedClockwise(
-      previousVisibleSkyStart,
-      newVisibleSkyStart,
-      numSectors
-    );
-    for (const sector of passedSectors) {
-      if (theorySectors.includes(sector)) {
-        theorySectorsTriggered.push(sector);
-      }
+  // Check if we crossed a theory sector based on Earth marker movement
+  const mode = currentGameSettings.mode;
+  const theorySectors = MODE_SETTINGS[mode]?.theorySectors || [];
+  const passedSectors = getSectorsPassedClockwise(
+    previousEarthSector,
+    earthSector,
+    numSectors
+  );
+  for (const sector of passedSectors) {
+    if (theorySectors.includes(sector)) {
+      theorySectorsTriggered.push(sector);
     }
   }
+
+  circularBoardState.lastEarthSector = earthSector;
 
   return { earthSector, theorySectorsTriggered };
 }
@@ -3479,5 +3526,7 @@ function showTheoryPhaseAlert(sector) {
     $advanceBtn.addClass("theory-phase-pending");
     // Scroll to the theories section
     document.getElementById("theories-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    isTheoryModalActive = false;
+    processTheoryQueue();
   });
 }

@@ -19,4 +19,12 @@ module.exports = [
       "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     },
   },
+  {
+    files: ["tests/**/*.js", "playwright.config.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
 ];

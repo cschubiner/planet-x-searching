@@ -4,7 +4,7 @@
   "description": "![wakatime](https://wakatime.com/badge/user/8bcd13fa-2f3e-409b-b13c-434e9008e3d9/project/b42443e3-dec9-4027-96c1-32c2b936dc90.svg)",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "playwright test",
     "lint": "eslint ."
   },
   "repository": {
@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/cschubiner/planet-x-searching#readme",
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "eslint": "^9.39.2",
     "globals": "^17.0.0"
   }
