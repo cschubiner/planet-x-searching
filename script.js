@@ -1413,19 +1413,6 @@ function startGame(gameSettings) {
   // initialize theories table
   initializeTheoriesTable(playerColors, numSectors);
 
-  // initialize player move filters
-  $("#player-move-filters").append(
-    BootstrapHtml.buttonGroup(
-      playerColors.map((color) =>
-        BootstrapHtml.toggleButton(
-          `outline-${PLAYER_COLORS[color]}`,
-          color.charAt(0).toUpperCase(),
-          { btnClass: "player-move-filters", color }
-        )
-      )
-    )
-  );
-
   // set the global settings
   Object.assign(currentGameSettings, gameSettings);
 
@@ -2639,34 +2626,6 @@ $(() => {
     // hide the final score calculator by default
     $("#hide-score-calculator-btn").trigger("click");
 
-    // add functionality to player move filter
-    $(".player-move-filters").on("click", (event) => {
-      const $playerBtn = $(event.target);
-      $playerBtn.toggleClass("active", !isActive($playerBtn));
-
-      // find selected
-      const filterPlayers = new Set();
-      $(".player-move-filters").forEach(($btn) => {
-        if (isActive($btn)) {
-          filterPlayers.add($btn.attr("color"));
-        }
-      });
-
-      if (filterPlayers.size === 0) {
-        // no filters; show all rows
-        $(`.${MOVE_ROW_CLASS}`).removeClass("d-none");
-        return;
-      }
-
-      $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
-        const moveId = $row.getId();
-        const player = $row
-          .find(`input[name="${moveId}-player"]:checked`)
-          .attr("value");
-        const showRow = player != null && filterPlayers.has(player);
-        $row.toggleClass("d-none", !showRow);
-      });
-    });
   });
 
   function checkStartButton() {

@@ -75,6 +75,10 @@ img.time {
   border-spacing: 0;
 }
 
+#hints-table .hint-cell.table-secondary {
+  background-color: #b9c0c9;
+}
+
 #hints-table > * > :first-child > :first-child {
   /* First cell: full border */
   border-width: 1px;
