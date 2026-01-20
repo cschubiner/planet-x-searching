@@ -1025,6 +1025,19 @@ function getUrl(settings = {}) {
   return url;
 }
 
+function updateHintsStickyColumns() {
+  const $firstColCells = $("#hints-table .freeze-col").not(".col2");
+  if ($firstColCells.length === 0) return;
+  let maxWidth = 0;
+  $firstColCells.forEach(($cell) => {
+    const width = $cell.outerWidth();
+    if (width > maxWidth) maxWidth = width;
+  });
+  if (!maxWidth) return;
+  $firstColCells.css("min-width", `${maxWidth}px`);
+  $("#hints-table .freeze-col.col2").css("left", `${maxWidth}px`);
+}
+
 function createObjectImage(object, attrs = {}) {
   if (!object) {
     console.warn("createObjectImage called with invalid object:", object);
@@ -1429,8 +1442,12 @@ function startGame(gameSettings) {
     );
   }
   // freeze the second column
-  const col1Width = $("#sectors-head-filler").get(0).offsetWidth;
-  $("#hints-table .freeze-col.col2").attr("style", `left: ${col1Width}px`);
+  updateHintsStickyColumns();
+  // ensure correct widths after images/styles settle
+  setTimeout(updateHintsStickyColumns, 0);
+  $(window)
+    .off("resize.hintsSticky")
+    .on("resize.hintsSticky", updateHintsStickyColumns);
 
   // logic rules
   $("#logic-rules-body").append(
