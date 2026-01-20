@@ -589,10 +589,91 @@
                 </div>
               </div>
             </div>
+            <div id="research-notes-info" class="row">
+              <div class="col">
+                <div id="research-notes-header" class="row mb-2">
+                  <div class="col-auto">
+                    <h3>Conference Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track Planet X conference info. Conferences reveal a rule about Planet X and another object."></i></h3>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="hide-research-notes-btn"
+                      class="btn btn-sm btn-outline-danger"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                </div>
+                <div id="research-notes" class="table-responsive">
+                  <table class="table table-bordered table-hover align-middle">
+                    <thead>
+                      <tr>
+                        <th scope="col"></th>
+                        <th scope="col" class="research-table-col">Topic</th>
+                        <th scope="col" class="research-table-col w-100">
+                          Notes
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="research-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div id="theories-section" class="row mb-2">
+              <div class="col">
+                <div id="theories-header" class="row mb-2 align-items-center">
+                  <div class="col-auto">
+                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Theories advance toward Peer Review each theory phase. When they reach Peer Review, verify them in the app."></i></h3>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="advance-theories-btn"
+                      class="btn btn-sm btn-primary"
+                      title="Advance all submitted theories one step toward Peer Review"
+                    >
+                      <i class="bi bi-fast-forward-fill"></i> Advance Theories
+                    </button>
+                  </div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="hide-theories-btn"
+                      class="btn btn-sm btn-outline-danger"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                </div>
+                <div id="theories" class="table-responsive">
+                  <table
+                    id="theories-table"
+                    class="table table-bordered table-hover align-middle"
+                  >
+                    <thead>
+                      <tr>
+                        <th scope="col" class="small-col">Player</th>
+                        <th scope="col" class="small-col">Sector</th>
+                        <th scope="col">Object</th>
+                        <th scope="col" class="text-center" style="min-width: 120px;">Progress</th>
+                        <th scope="col" class="small-col text-center">Correct?</th>
+                      </tr>
+                    </thead>
+                    <tbody id="theories-body"></tbody>
+                  </table>
+                </div>
+                <div class="text-secondary small">
+                  <strong>How it works:</strong> Submit a theory, then click "Advance Theories" each theory phase.
+                  When a theory reaches <span class="badge bg-danger">Peer Review</span>, verify it in the official app!
+                </div>
+              </div>
+            </div>
             <div id="score-calculator-section" class="row mb-2">
               <div class="col">
                 <div id="score-calculator-header" class="row mb-2">
-                  <div class="col-auto"><h3>Final Score Calculator <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Calculate your final score. Enter the number of correct theories for each object type and your Planet X bonus."></i></h3></div>
+                  <div class="col-auto"><h3>Final Score Calculator <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="After End Game in the app, remove incorrect theory tokens. Enter how many correct theories you submitted for each object, your first-correct-theory bonuses, and your Planet X points."></i></h3></div>
                   <div class="col-auto">
                     <button
                       type="button"
@@ -727,86 +808,10 @@
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-            <div id="theories-section" class="row mb-3">
-              <div class="col">
-                <div id="theories-header" class="row mb-2 align-items-center">
-                  <div class="col-auto">
-                    <h3>Theory Tracking <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track theories you submit about object locations. Theories advance toward Peer Review each theory phase. When they reach Peer Review, verify them in the app."></i></h3>
-                  </div>
-                  <div class="col-auto">
-                    <button
-                      type="button"
-                      id="advance-theories-btn"
-                      class="btn btn-sm btn-primary"
-                      title="Advance all submitted theories one step toward Peer Review"
-                    >
-                      <i class="bi bi-fast-forward-fill"></i> Advance Theories
-                    </button>
-                  </div>
-                  <div class="col-auto">
-                    <button
-                      type="button"
-                      id="hide-theories-btn"
-                      class="btn btn-sm btn-outline-danger"
-                    >
-                      Hide
-                    </button>
-                  </div>
-                </div>
-                <div id="theories" class="table-responsive">
-                  <table
-                    id="theories-table"
-                    class="table table-bordered table-hover align-middle"
-                  >
-                    <thead>
-                      <tr>
-                        <th scope="col" class="small-col">Player</th>
-                        <th scope="col" class="small-col">Sector</th>
-                        <th scope="col">Object</th>
-                        <th scope="col" class="text-center" style="min-width: 120px;">Progress</th>
-                        <th scope="col" class="small-col text-center">Correct?</th>
-                      </tr>
-                    </thead>
-                    <tbody id="theories-body"></tbody>
-                  </table>
-                </div>
                 <div class="text-secondary small">
-                  <strong>How it works:</strong> Submit a theory, then click "Advance Theories" each theory phase.
-                  When a theory reaches <span class="badge bg-danger">Peer Review</span>, verify it in the official app!
-                </div>
-              </div>
-            </div>
-            <div id="research-notes-info" class="row">
-              <div class="col">
-                <div id="research-notes-header" class="row mb-2">
-                  <div class="col-auto">
-                    <h3>Conference Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track Planet X conference info. Conferences reveal a rule about Planet X and another object."></i></h3>
-                  </div>
-                  <div class="col-auto">
-                    <button
-                      type="button"
-                      id="hide-research-notes-btn"
-                      class="btn btn-sm btn-outline-danger"
-                    >
-                      Hide
-                    </button>
-                  </div>
-                </div>
-                <div id="research-notes" class="table-responsive">
-                  <table class="table table-bordered table-hover align-middle">
-                    <thead>
-                      <tr>
-                        <th scope="col"></th>
-                        <th scope="col" class="research-table-col">Topic</th>
-                        <th scope="col" class="research-table-col w-100">
-                          Notes
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody id="research-body"></tbody>
-                  </table>
+                  <strong>How it works:</strong> After End Game, flip theory tokens, remove incorrect ones, and count your correct theories.
+                  Enter the number of sectors where you were first (or tied) to submit a correct theory (1 point each), the count of your correct
+                  theories by object (multiplied by the value shown), and your Planet X points (10 if first, otherwise 2 per sector behind the first finder).
                 </div>
               </div>
             </div>

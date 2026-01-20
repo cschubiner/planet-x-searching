@@ -175,8 +175,7 @@ function getCurrentState() {
     const player = $row.find(`input[name="${moveId}-player"]:checked`).attr("value");
 
     // Get action
-    const $actionSelect = $row.find(`#${moveId}-action`);
-    const action = $actionSelect.val();
+    const action = getSelectedRadio(`${moveId}-action`, $row);
 
     // Get action args based on action type
     let actionArgs = {};
@@ -449,7 +448,10 @@ function restoreGameState(state) {
     }
 
     if (move.action) {
-      $row.find(`#${moveId}-action`).val(move.action).trigger("change");
+      $row
+        .find(`input[name="${moveId}-action"][value="${move.action}"]`)
+        .prop("checked", true)
+        .trigger("change");
 
       // Restore action args
       if (move.action === "survey" && move.actionArgs) {
@@ -611,6 +613,11 @@ $.fn.chooseClass = function (classes, key) {
   }
   return this;
 };
+
+function getSelectedRadio(name, $scope = $(document)) {
+  const $input = $scope.find(`input[name="${name}"]:checked`);
+  return $input.attr("value") ?? null;
+}
 
 /**
  * Helper functions for creating Bootstrap elements.
@@ -1445,6 +1452,7 @@ function addMoveRow() {
   const timeCostId = `${moveId}-time`;
   const playerRadioName = `${moveId}-player`;
   const actionSelectId = `${moveId}-action`;
+  const actionGroupId = `${actionSelectId}-group`;
   const actionArgsClass = `${actionSelectId}-args`;
   const surveyObjectRadioName = `${actionSelectId}-survey-object`;
   const surveySectorStartSelectId = `${actionSelectId}-survey-sector-start`;
@@ -1479,14 +1487,19 @@ function addMoveRow() {
         // are hidden (doing "mb-2" here will cause a space)
         $("<div>", { class: "row gx-2" }).append(
           $("<div>", { class: "col" }).append(
-            BootstrapHtml.dropdown(
+            BootstrapHtml.radioButtonGroup(
+              actionSelectId,
               [
-                { value: "survey", label: "Survey" },
-                { value: "target", label: "Target" },
-                { value: "research", label: "Research" },
-                { value: "locate", label: "Locate Planet X" },
-              ],
-              { id: actionSelectId, move: moveId }
+                { value: "survey", content: "Survey" },
+                { value: "target", content: "Target" },
+                { value: "research", content: "Research" },
+                { value: "locate", content: "Locate Planet X" },
+              ].map((action) => ({ ...action, attrs: { move: moveId } })),
+              {
+                id: actionGroupId,
+                divClass: "action-btn-grid",
+                elementAccent: "secondary",
+              }
             ),
             $("<div>", {
               id: `${actionSelectId}-feedback`,
@@ -1573,7 +1586,7 @@ function addMoveRow() {
     )
   );
 
-  function getSelected($select) {
+  function getSelectedOption($select) {
     // `$select.val()` doesn't work with disabled options, so loop manually
     let selected = null;
     // use `.find()` in case the select is using groups
@@ -1585,6 +1598,10 @@ function addMoveRow() {
       }
     });
     return selected;
+  }
+
+  function getSelectedAction($scope = $(`#${moveId}`), name = actionSelectId) {
+    return getSelectedRadio(name, $scope);
   }
 
   function setTimeCost(cost = null) {
@@ -1607,10 +1624,10 @@ function addMoveRow() {
     setText = false,
   } = {}) {
     if (start === undefined) {
-      start = getSelected($(`#${surveySectorStartSelectId}`));
+      start = getSelectedOption($(`#${surveySectorStartSelectId}`));
     }
     if (end === undefined) {
-      end = getSelected($(`#${surveySectorEndSelectId}`));
+      end = getSelectedOption($(`#${surveySectorEndSelectId}`));
     }
     if (start == null || end == null) {
       if (setText) setTimeCost();
@@ -1802,7 +1819,7 @@ function addMoveRow() {
     }
 
     // calculate the time cost for this action
-    const currAction = getSelected($row.find(`#${actionSelectId}`));
+    const currAction = getSelectedAction($row);
     if (currAction != null) {
       let cost = null;
       if (currAction === "survey") {
@@ -1829,17 +1846,19 @@ function addMoveRow() {
         .attr("value");
       if (player == null) return;
       // find selected action (can be null)
-      const $actionSelect = $row.find(`#${moveId}-action`);
-      const actionId = $actionSelect.getId();
+      const actionId = `${moveId}-action`;
+      const $actionGroup = $row.find(`#${actionId}-group`);
+      const $actionInputs = $row.find(`input[name="${actionId}"]`);
       const $actionFeedback = $(`#${actionId}-feedback`);
-      const action = getSelected($actionSelect);
+      const action = getSelectedAction($row, actionId);
       // save this player's move
       if (!(player in playerMoves)) {
         playerMoves[player] = [];
       }
       playerMoves[player].push({
         moveNum,
-        $actionSelect,
+        $actionGroup,
+        $actionInputs,
         $actionFeedback,
         action,
       });
@@ -1849,30 +1868,35 @@ function addMoveRow() {
       const ordered = moves.sort((a, b) => a.moveNum - b.moveNum);
       let numTargets = 0;
       let lastAction = null;
-      for (const { $actionSelect, $actionFeedback, action } of ordered) {
-        $actionSelect.removeClass("is-invalid");
-        $actionSelect.find("option:not([default])").prop("disabled", false);
+      for (const { $actionGroup, $actionInputs, $actionFeedback, action } of ordered) {
+        $actionGroup.removeClass("is-invalid");
+        $actionFeedback.text("");
+        $actionInputs.prop("disabled", false);
         if (lastAction === "research") {
           // cannot research two times in a row
           if (action === "research") {
-            $actionSelect.addClass("is-invalid");
+            $actionGroup.addClass("is-invalid");
             $actionFeedback.text(
               `Player ${playerTitle}: Cannot research two times in a row`
             );
           }
           // disable
-          $actionSelect.find('option[value="research"]').prop("disabled", true);
+          $actionInputs
+            .filter('[value="research"]')
+            .prop("disabled", true);
         }
         if (numTargets >= 2) {
           if (action === "target") {
             // cannot target more than two times
-            $actionSelect.addClass("is-invalid");
+            $actionGroup.addClass("is-invalid");
             $actionFeedback.text(
               `Player ${playerTitle}: Cannot target more than two times`
             );
           }
           // disable
-          $actionSelect.find('option[value="target"]').prop("disabled", true);
+          $actionInputs
+            .filter('[value="target"]')
+            .prop("disabled", true);
         }
         lastAction = action;
         if (action === "target") {
@@ -1886,8 +1910,8 @@ function addMoveRow() {
   });
 
   // when the action is changed, show its args
-  $(`#${actionSelectId}`).on("change", (_event) => {
-    const action = $(`#${actionSelectId}`).val();
+  $(`input[name="${actionSelectId}"]`).on("change", (_event) => {
+    const action = getSelectedAction();
     // hide all the other args
     $(`.${actionArgsClass}`).forEach(($args) => {
       $args.toggleClass("d-none", $args.attr("action") !== action);
@@ -1917,7 +1941,7 @@ function addMoveRow() {
       }
     });
 
-    if (getSelected($startSelect) != null) {
+    if (getSelectedOption($startSelect) != null) {
       // if nothing was selected yet, just leave it
       // otherwise, trigger a change to update the end sector select
       $startSelect.trigger("change");
@@ -1929,14 +1953,14 @@ function addMoveRow() {
     );
 
     const $startSelect = $(`#${surveySectorStartSelectId}`);
-    const startValue = getSelected($startSelect);
+    const startValue = getSelectedOption($startSelect);
     const $endSelect = $(`#${surveySectorEndSelectId}`);
 
     const sectors = [];
     let invalidIsSelected = false;
     if (startValue != null) {
       const startSector = Number(startValue);
-      const endValue = getSelected($endSelect);
+      const endValue = getSelectedOption($endSelect);
       const endSector = endValue != null ? Number(endValue) : null;
 
       // mark as invalid if not a prime number
@@ -1987,7 +2011,7 @@ function addMoveRow() {
       );
 
       const $endSelect = $(`#${surveySectorEndSelectId}`);
-      const endValue = getSelected($endSelect);
+      const endValue = getSelectedOption($endSelect);
       if (endValue == null) return;
       const endSector = Number(endValue);
 

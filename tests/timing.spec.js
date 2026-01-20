@@ -38,15 +38,13 @@ test("Theory phase triggers when visible sky reaches sector 3", async ({ page })
   await startGame(page);
 
   const firstRow = page.locator("#moves-body tr").first();
-  const firstId = await firstRow.getAttribute("id");
   await firstRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${firstId}-action`).selectOption("target");
+  await firstRow.locator("label[for$='-action-target']").click();
   await firstRow.locator('[action="target"] select').selectOption("1");
 
   const secondRow = page.locator("#moves-body tr").nth(1);
-  const secondId = await secondRow.getAttribute("id");
   await secondRow.locator("label[for$='-player-red']").click();
-  await page.locator(`#${secondId}-action`).selectOption("target");
+  await secondRow.locator("label[for$='-action-target']").click();
   await secondRow.locator('[action="target"] select').selectOption("2");
 
   await expect(page.locator("#visible-sky-summary")).toContainText("sector 5");
@@ -59,21 +57,19 @@ test("Conference triggers at time threshold", async ({ page }) => {
   await startGame(page);
 
   const firstRow = page.locator("#moves-body tr").first();
-  const firstId = await firstRow.getAttribute("id");
   await firstRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${firstId}-action`).selectOption("target");
+  await firstRow.locator("label[for$='-action-target']").click();
   await firstRow.locator('[action="target"] select').selectOption("1");
 
   const secondRow = page.locator("#moves-body tr").nth(1);
-  const secondId = await secondRow.getAttribute("id");
   await secondRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${secondId}-action`).selectOption("target");
+  await secondRow.locator("label[for$='-action-target']").click();
   await secondRow.locator('[action="target"] select').selectOption("2");
 
   const thirdRow = page.locator("#moves-body tr").nth(2);
   const thirdId = await thirdRow.getAttribute("id");
   await thirdRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${thirdId}-action`).selectOption("survey");
+  await thirdRow.locator("label[for$='-action-survey']").click();
   await thirdRow.locator("label[for$='-action-survey-object-asteroid']").click();
   await page.locator(`#${thirdId}-action-survey-sector-start`).selectOption("1");
   await page.locator(`#${thirdId}-action-survey-sector-end`).selectOption("3");

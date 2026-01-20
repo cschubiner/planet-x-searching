@@ -47,7 +47,7 @@ test("Survey end options limited to visible sky", async ({ page }) => {
   const moveRow = page.locator("#moves-body tr").first();
   const moveId = await moveRow.getAttribute("id");
   await moveRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${moveId}-action`).selectOption("survey");
+  await moveRow.locator("label[for$='-action-survey']").click();
   await moveRow.locator("label[for$='-action-survey-object-asteroid']").click();
   await page.locator(`#${moveId}-action-survey-sector-start`).selectOption("1");
 
@@ -61,7 +61,7 @@ test("Comet survey disables non-prime start sectors", async ({ page }) => {
   const moveRow = page.locator("#moves-body tr").first();
   const moveId = await moveRow.getAttribute("id");
   await moveRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${moveId}-action`).selectOption("survey");
+  await moveRow.locator("label[for$='-action-survey']").click();
   await moveRow.locator("label[for$='-action-survey-object-comet']").click();
 
   const option1 = page.locator(`#${moveId}-action-survey-sector-start option[value='1']`);
@@ -119,34 +119,31 @@ test("Cannot research twice in a row", async ({ page }) => {
   await startGame(page);
 
   const firstRow = page.locator("#moves-body tr").first();
-  const firstId = await firstRow.getAttribute("id");
   await firstRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${firstId}-action`).selectOption("research");
+  await firstRow.locator("label[for$='-action-research']").click();
   await firstRow.locator("label[for$='-action-research-area-A']").click();
 
   const secondRow = page.locator("#moves-body tr").nth(1);
   const secondId = await secondRow.getAttribute("id");
   await secondRow.locator("label[for$='-player-blue']").click();
-  await expect(page.locator(`#${secondId}-action option[value='research']`)).toBeDisabled();
+  await expect(page.locator(`#${secondId}-action-research`)).toBeDisabled();
 });
 
 test("Target action limited to two per player", async ({ page }) => {
   await startGame(page);
 
   const firstRow = page.locator("#moves-body tr").first();
-  const firstId = await firstRow.getAttribute("id");
   await firstRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${firstId}-action`).selectOption("target");
+  await firstRow.locator("label[for$='-action-target']").click();
   await firstRow.locator('[action="target"] select').selectOption("1");
 
   const secondRow = page.locator("#moves-body tr").nth(1);
-  const secondId = await secondRow.getAttribute("id");
   await secondRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${secondId}-action`).selectOption("target");
+  await secondRow.locator("label[for$='-action-target']").click();
   await secondRow.locator('[action="target"] select').selectOption("2");
 
   const thirdRow = page.locator("#moves-body tr").nth(2);
   const thirdId = await thirdRow.getAttribute("id");
   await thirdRow.locator("label[for$='-player-blue']").click();
-  await expect(page.locator(`#${thirdId}-action option[value='target']`)).toBeDisabled();
+  await expect(page.locator(`#${thirdId}-action-target`)).toBeDisabled();
 });

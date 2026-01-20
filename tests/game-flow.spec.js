@@ -59,15 +59,14 @@ test("Visible sky summary updates after moves", async ({ page }) => {
   const moveRow = page.locator("#moves-body tr").first();
   const moveId = await moveRow.getAttribute("id");
   await moveRow.locator("label[for$='-player-blue']").click();
-  await page.locator(`#${moveId}-action`).selectOption("survey");
+  await moveRow.locator("label[for$='-action-survey']").click();
   await moveRow.locator("label[for$='-action-survey-object-comet']").click();
   await page.locator(`#${moveId}-action-survey-sector-start`).selectOption("2");
   await page.locator(`#${moveId}-action-survey-sector-end`).selectOption("3");
 
   const nextRow = page.locator("#moves-body tr").nth(1);
-  const nextId = await nextRow.getAttribute("id");
   await nextRow.locator("label[for$='-player-red']").click();
-  await page.locator(`#${nextId}-action`).selectOption("research");
+  await nextRow.locator("label[for$='-action-research']").click();
   await nextRow.locator("label[for$='-action-research-area-A']").click();
 
   await expect(summary).toContainText("Visible sky starts at sector 2");
