@@ -1038,6 +1038,35 @@ function updateHintsStickyColumns() {
   $("#hints-table .freeze-col.col2").css("left", `${maxWidth}px`);
 }
 
+function shiftHintsTableToCenter(targetSector) {
+  const numSectors = MODE_SETTINGS[currentGameSettings.mode]?.numSectors;
+  if (!numSectors || !Number.isFinite(targetSector)) return;
+
+  const centerIndex = Math.floor(numSectors / 2);
+  let start = targetSector - centerIndex;
+  while (start <= 0) start += numSectors;
+
+  const order = Array.fromRange(numSectors, (index) => {
+    return ((start - 1 + index) % numSectors) + 1;
+  });
+
+  $("#hints-table tr").forEach(($row) => {
+    const cellsBySector = {};
+    $row.children("[data-sector]").forEach(($cell) => {
+      const sector = Number($cell.attr("data-sector"));
+      if (Number.isFinite(sector)) {
+        cellsBySector[sector] = $cell;
+      }
+    });
+    order.forEach((sector) => {
+      const $cell = cellsBySector[sector];
+      if ($cell) {
+        $row.append($cell);
+      }
+    });
+  });
+}
+
 function createObjectImage(object, attrs = {}) {
   if (!object) {
     console.warn("createObjectImage called with invalid object:", object);
@@ -1396,10 +1425,16 @@ function startGame(gameSettings) {
   $notesRow.append($("<td>", { class: "freeze-col col2" }));
   for (let i = 0; i < numSectors; i++) {
     const sector = i + 1;
-    $head.append($("<th>").text(`Sector ${sector}`));
+    $head.append(
+      $("<th>", { "data-sector": sector, class: "sector-head" }).text(
+        `Sector ${sector}`
+      )
+    );
     // add the opposite sector number
     const opposite = ((i + numSectors / 2) % numSectors) + 1;
-    $oppositeRow.append($("<td>").text(`Sector ${opposite}`));
+    $oppositeRow.append(
+      $("<td>", { "data-sector": sector }).text(`Sector ${opposite}`)
+    );
     // add hint button groups for each object row
     $objectRows.forEach(($row) => {
       const object = $row.attr("object");
@@ -1413,7 +1448,11 @@ function startGame(gameSettings) {
       const hintName = `${object}-sector${sector}`;
       const extraAttrs = { hintName, object, sector };
       $row.append(
-        $("<td>", { id: `${hintName}-cell`, class: "hint-cell" }).append(
+        $("<td>", {
+          id: `${hintName}-cell`,
+          class: "hint-cell",
+          "data-sector": sector,
+        }).append(
           BootstrapHtml.buttonGroup(
             [
               { hint: "no", accent: "danger", icon: "x-lg" },
@@ -1438,7 +1477,9 @@ function startGame(gameSettings) {
     });
     // add notes textbox
     $notesRow.append(
-      $("<td>").append(BootstrapHtml.editable({ placeholder: "Notes" }))
+      $("<td>", { "data-sector": sector }).append(
+        BootstrapHtml.editable({ placeholder: "Notes" })
+      )
     );
   }
   // freeze the second column
@@ -1448,6 +1489,16 @@ function startGame(gameSettings) {
   $(window)
     .off("resize.hintsSticky")
     .on("resize.hintsSticky", updateHintsStickyColumns);
+
+  // allow recentering the sectors by clicking a header
+  $("#sectors-head")
+    .off("click.sectorShift", "th[data-sector]")
+    .on("click.sectorShift", "th[data-sector]", (event) => {
+      const sector = Number($(event.currentTarget).attr("data-sector"));
+      if (Number.isFinite(sector)) {
+        shiftHintsTableToCenter(sector);
+      }
+    });
 
   // logic rules
   $("#logic-rules-body").append(
