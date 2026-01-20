@@ -326,19 +326,15 @@
                   </ul>
                 </div>
 
-                <!-- Step 9: Research & Conferences -->
+                <!-- Step 9: Conferences -->
                 <div class="tutorial-step d-none" data-step="9">
-                  <h4>Research & Conferences</h4>
-                  <h5>Research Topics</h5>
-                  <p>There are 6 research topics (A-F). Each reveals a logic rule about 1-2 object types. Track which topics you've researched in the <strong>Research Notes</strong> section.</p>
-
-                  <h5>Conferences</h5>
-                  <p>When players reach certain time thresholds, <strong>conferences</strong> are triggered:</p>
+                  <h4>Conferences</h4>
+                  <p>When players reach certain time thresholds, <strong>Planet X conferences</strong> are triggered:</p>
                   <ul>
                     <li><strong>Standard Mode:</strong> X1 at time 12</li>
                     <li><strong>Expert Mode:</strong> X1 at time 10, X2 at time 22</li>
                   </ul>
-                  <p>Conferences reveal information about Planet X's relationship to nearby objects!</p>
+                  <p>Conferences reveal a logic rule about <strong>Planet X</strong> and another object type. Track the rule in the <strong>Conference Notes</strong> section.</p>
                 </div>
 
                 <!-- Step 10: Getting Started -->
@@ -437,7 +433,7 @@
                 <i class="bi bi-question-circle-fill text-info section-help"
                    data-bs-toggle="tooltip"
                    data-bs-placement="right"
-                   title="Visual representation of the sky sectors. Click a sector to see details. Hover to highlight adjacent sectors. The visible sky (half the board) is shown brighter."></i>
+                   title="Visual representation of the sky sectors. Click a sector to see details. Hover to highlight adjacent sectors. The visible sky is always half the sectors, starting at the Earth arrow (furthest-back player) and extending clockwise."></i>
               </h3>
               <div class="btn-group btn-group-sm">
                 <button type="button" id="rotate-board-left" class="btn btn-outline-secondary" title="Rotate left">
@@ -473,6 +469,7 @@
                   <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Planet X</span>
                 </div>
               </div>
+              <div id="visible-sky-details" class="text-muted small text-center mt-2"></div>
             </div>
           </div>
         </div>
@@ -804,7 +801,7 @@
               <div class="col">
                 <div id="research-notes-header" class="row mb-2">
                   <div class="col-auto">
-                    <h3>Research & Conference Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track research topics (A-F) and conference info. Each research reveals rules about specific objects. Conferences give info about Planet X."></i></h3>
+                    <h3>Conference Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track Planet X conference info. Conferences reveal a rule about Planet X and another object."></i></h3>
                   </div>
                   <div class="col-auto">
                     <button
@@ -834,13 +831,14 @@
             </div>
           </div>
           <div class="col-lg-6 order-lg-1">
-            <h3>Move Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track each player's actions and time costs. Select player, choose action, fill in details. The Time Track shows cumulative time and track position (wraps at 12/18). Player with lowest cumulative time goes next."></i></h3>
+            <h3>Move Notes <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="Track each player's actions and time costs. Select player, choose action, fill in details. The Time Track shows cumulative time and track position (wraps at 12/18). Player with lowest cumulative time goes next. The visible sky starts at the furthest-back player's sector and spans half the sky clockwise."></i></h3>
             <div id="time-track-section" class="mb-3">
               <div class="row gx-2 mb-2 align-items-center">
                 <div class="col-auto"><strong>Time Track:</strong></div>
                 <div id="time-track-display" class="col"></div>
               </div>
-              <div class="text-muted small mb-2">Format: Cumulative Time (Position/TrackSize). Conferences trigger at cumulative time thresholds.</div>
+              <div class="text-muted small mb-1">Format: Cumulative Time (Position/TrackSize). Conferences trigger at cumulative time thresholds.</div>
+              <div id="visible-sky-summary" class="text-muted small mb-2"></div>
               <div id="current-turn-display" class="text-muted small"></div>
             </div>
             <div class="row gx-2 mb-2">

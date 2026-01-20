@@ -637,7 +637,7 @@ const BootstrapHtml = {
     attrs.class = classes.join(" ");
     attrs.contenteditable = true;
     const $div = $("<div>", attrs);
-    $div.on("input focusout", (event) => {
+    $div.on("input focusout", (_event) => {
       if (["<br>", "<div><br></div>"].includes($div.html())) {
         $div.empty();
       }
@@ -863,7 +863,7 @@ const BootstrapHtml = {
     );
 
     if (defaultBlank && deleteDefault) {
-      $select.one("change", (event) => {
+      $select.one("change", (_event) => {
         // delete the first default option the first time an option is selected
         $select.children("[default]:disabled").forEach(($option) => {
           if ($option.text().trim() === "-") {
@@ -1052,14 +1052,13 @@ function initializeTheoriesTable(playerColors, numSectors) {
 
   // Set up advance theories button
   $("#advance-theories-btn").on("click", () => {
-    advanceAllTheories(playerColors, numSectors);
+    advanceAllTheories();
   });
 }
 
 /** Advances all submitted theories one step toward peer review */
-function advanceAllTheories(playerColors, numSectors) {
+function advanceAllTheories() {
   let theoriesAdvanced = 0;
-  let theoriesReachedPeerReview = 0;
 
   $(".theory-row").each(function() {
     const $row = $(this);
@@ -1086,7 +1085,6 @@ function advanceAllTheories(playerColors, numSectors) {
     theoriesAdvanced++;
 
     if (newProgress === THEORY_PROGRESS.PEER_REVIEW) {
-      theoriesReachedPeerReview++;
       // Highlight the row
       $row.addClass("table-danger");
     }
@@ -1098,10 +1096,6 @@ function advanceAllTheories(playerColors, numSectors) {
 
   // Show feedback
   if (theoriesAdvanced > 0) {
-    let message = `Advanced ${theoriesAdvanced} theor${theoriesAdvanced === 1 ? 'y' : 'ies'}!`;
-    if (theoriesReachedPeerReview > 0) {
-      message += ` ${theoriesReachedPeerReview} reached Peer Review - verify in the app!`;
-    }
     // Brief visual feedback
     $btn.addClass("btn-success").removeClass("btn-primary");
     setTimeout(() => {
@@ -1211,7 +1205,7 @@ function addTheoryRow(playerColors, numSectors) {
   toggleImageWhiteVariant(`input[name="${theoryId}-object"]`);
 
   // When theory details are filled in, auto-set progress to PLACED if still NOT_SUBMITTED
-  $(`[theory="${theoryId}"]`).on("change", (event) => {
+  $(`[theory="${theoryId}"]`).on("change", (_event) => {
     const $row = $(`#${theoryId}`);
 
     // Auto-add new row
@@ -1438,31 +1432,9 @@ function startGame(gameSettings) {
     toggleImageWhiteVariant(".starting-info-object-hint");
   }
 
-  // initialize research table
+  // initialize conference notes table
   const topicOptions = ["Asteroids", "Comets", "Dwarf Planets", "Gas Clouds"];
   $("#research-body").append(
-    settings.research.map((letter) =>
-      $("<tr>").append(
-        $("<th>", { scope: "row" }).text(letter),
-        $("<td>").append(
-          $("<div>", { class: "row gx-2 align-items-center" }).append(
-            $("<div>", { class: "col-auto" }).append(
-              BootstrapHtml.dropdown(topicOptions, { onlyLabels: true })
-            ),
-            $("<div>", { class: "col-auto" }).text("&"),
-            $("<div>", { class: "col-auto" }).append(
-              BootstrapHtml.dropdown(topicOptions, {
-                // let the user go back to a blank on the second one, since the
-                // topic might only be about one object
-                disableDefault: false,
-                onlyLabels: true,
-              })
-            )
-          )
-        ),
-        $("<td>").append(BootstrapHtml.editable({ placeholder: "Notes" }))
-      )
-    ),
     settings.conferences.map((conf) =>
       $("<tr>", { id: `conference-${conf.name}-row`, "data-threshold": conf.threshold }).append(
         $("<th>", { scope: "row" }).html(`${conf.name} <span class="text-muted small">(at time ${conf.threshold})</span>`),
@@ -1849,16 +1821,20 @@ function addMoveRow() {
 
     // Update circular board with player positions and auto-rotate visible sky
     if (typeof updateCircularBoardPlayers === "function") {
-      const { earthSector, theorySectorTriggered } = updateCircularBoardPlayers(playerTimes, nextPlayer, minTime);
+      const { theorySectorsTriggered } = updateCircularBoardPlayers(
+        playerTimes,
+        nextPlayer,
+        minTime
+      );
 
       // Check for theory phase triggers
-      if (theorySectorTriggered) {
-        const theoryKey = `theory-sector-${theorySectorTriggered}-shown`;
+      (theorySectorsTriggered || []).forEach((sector) => {
+        const theoryKey = `theory-sector-${sector}-shown`;
         if (!sessionStorage.getItem(theoryKey)) {
-          sessionStorage.setItem(theoryKey, 'true');
-          showTheoryPhaseAlert(theorySectorTriggered);
+          sessionStorage.setItem(theoryKey, "true");
+          showTheoryPhaseAlert(sector);
         }
-      }
+      });
     }
 
     // Auto-save on move changes
@@ -1866,7 +1842,7 @@ function addMoveRow() {
   }
 
   // only includes the player and action selections (not notes)
-  $(`[move="${moveId}"]`).on("change", (event) => {
+  $(`[move="${moveId}"]`).on("change", (_event) => {
     // if this is a new row, add another row since this one is now changed
     const $row = $(`#${moveId}`);
     if ($row.attr("new")) {
@@ -1960,7 +1936,7 @@ function addMoveRow() {
   });
 
   // when the action is changed, show its args
-  $(`#${actionSelectId}`).on("change", (event) => {
+  $(`#${actionSelectId}`).on("change", (_event) => {
     const action = $(`#${actionSelectId}`).val();
     // hide all the other args
     $(`.${actionArgsClass}`).forEach(($args) => {
@@ -1971,7 +1947,7 @@ function addMoveRow() {
   // survey args
   const surveyObjectRadioSelector = `input[name="${surveyObjectRadioName}"]`;
   toggleImageWhiteVariant(surveyObjectRadioSelector);
-  $(surveyObjectRadioSelector).on("change", (event) => {
+  $(surveyObjectRadioSelector).on("change", (_event) => {
     const isComet = $(`${surveyObjectRadioSelector}[value="comet"]`).prop(
       "checked"
     );
@@ -1997,7 +1973,7 @@ function addMoveRow() {
       $startSelect.trigger("change");
     }
   });
-  $(`#${surveySectorStartSelectId}`).on("change", (event) => {
+  $(`#${surveySectorStartSelectId}`).on("change", (_event) => {
     const isComet = $(`${surveyObjectRadioSelector}[value="comet"]`).prop(
       "checked"
     );
@@ -2055,7 +2031,7 @@ function addMoveRow() {
 
     const $newEndSelect = $(`#${surveySectorEndSelectId}`);
     $newEndSelect.toggleClass("is-invalid", invalidIsSelected);
-    $newEndSelect.on("change", (event) => {
+    $newEndSelect.on("change", (_event) => {
       const isComet = $(`${surveyObjectRadioSelector}[value="comet"]`).prop(
         "checked"
       );
@@ -2074,7 +2050,7 @@ function addMoveRow() {
   });
 
   // research args
-  $(`input[name="${moveId}-action-research-area"]`).on("input", (event) => {
+  $(`input[name="${moveId}-action-research-area"]`).on("input", (_event) => {
     updatePlayerResearches();
     updateTimeTrack();
   });
@@ -2432,13 +2408,13 @@ $(() => {
     const autoSave = triggerAutoSave;
 
     // new game button
-    $("#new-game-btn").on("click", (event) => {
+    $("#new-game-btn").on("click", (_event) => {
       if (!confirm("Are you sure you want to start a new game?")) return;
       clearGameState();
       location.href = getUrl();
     });
     // reset button
-    $("#reset-btn").on("click", (event) => {
+    $("#reset-btn").on("click", (_event) => {
       if (!confirm("Are you sure you want to reset the game?")) return;
       clearGameState();
       location.href = getUrl(currentGameSettings);
@@ -2639,7 +2615,7 @@ $(() => {
     $("#research-body select").on("change", autoSave);
 
     // final score calculator
-    $("#score-table input").on("change", (event) => {
+    $("#score-table input").on("change", (_event) => {
       let total = 0;
       // first theory points
       total += Number($("#first-theory-points").val());
@@ -2665,7 +2641,7 @@ $(() => {
       "theories",
       "research-notes",
     ]) {
-      $(`#${name}-header`).on("click", (event) => {
+      $(`#${name}-header`).on("click", (_event) => {
         const $btn = $(`#hide-${name}-btn`);
         const showing = $btn.text().trim() === "Show";
         // toggle section
@@ -2714,15 +2690,15 @@ $(() => {
   });
 
   function checkStartButton() {
-    const [invalid, settings] = getGameSettings();
+    const [invalid] = getGameSettings();
     $("#start-game-btn").prop("disabled", invalid);
     return !invalid;
   }
 
-  $("#game-settings input").on("change", (event) => {
+  $("#game-settings input").on("change", (_event) => {
     checkStartButton();
   });
-  $("[draggable]").on("dragend", (event) => {
+  $("[draggable]").on("dragend", (_event) => {
     checkStartButton();
   });
 
@@ -2942,6 +2918,67 @@ let circularBoardState = {
   selectedSector: null,
 };
 
+function getVisibleSkyRange(start, numSectors) {
+  const visibleCount = Math.floor(numSectors / 2);
+  const end = ((start - 1 + visibleCount - 1) % numSectors) + 1;
+  return { start, end, visibleCount };
+}
+
+function isSectorVisible(sector, start, numSectors) {
+  const visibleCount = Math.floor(numSectors / 2);
+  const distance = (sector - start + numSectors) % numSectors;
+  return distance >= 0 && distance < visibleCount;
+}
+
+function updateVisibleSkyIndicator() {
+  const numSectors = circularBoardState.numSectors;
+  const { start } = getVisibleSkyRange(circularBoardState.visibleSkyStart, numSectors);
+  const indicator = $("#visible-sky-indicator");
+  const visibleSpan = 180;
+  const startAngle = ((start - 1) / numSectors) * 360 - 90;
+  indicator
+    .toggleClass("active", circularBoardState.showVisibleSky)
+    .css(
+      "background",
+      `conic-gradient(from ${startAngle}deg, rgba(125, 211, 252, 0.15) 0deg, rgba(125, 211, 252, 0.25) ${visibleSpan}deg, transparent ${visibleSpan}deg 360deg)`
+    );
+}
+
+function updateVisibleSkyDetails() {
+  const numSectors = circularBoardState.numSectors;
+  const { start, end, visibleCount } = getVisibleSkyRange(
+    circularBoardState.visibleSkyStart,
+    numSectors
+  );
+  const summary = `Visible sky starts at sector ${start} (furthest-back player) and spans ${visibleCount} sectors clockwise to sector ${end}.`;
+  $("#visible-sky-details").text(summary);
+  $("#visible-sky-summary").text(summary);
+  updateVisibleSkyIndicator();
+}
+
+function getEarthSectorFromTime(totalTime, numSectors) {
+  const maxTimeOnBoard = numSectors <= 12 ? 24 : 36;
+  const timeToSectorRatio = numSectors / maxTimeOnBoard;
+  const rawSector = Math.floor(totalTime * timeToSectorRatio);
+  return ((rawSector % numSectors) + numSectors) % numSectors + 1;
+}
+
+function getSectorsPassedClockwise(previousSector, nextSector, numSectors) {
+  const passed = [];
+  if (previousSector == null || nextSector == null || previousSector === nextSector) {
+    return passed;
+  }
+  let current = previousSector;
+  while (true) {
+    current = (current % numSectors) + 1;
+    passed.push(current);
+    if (current === nextSector) {
+      break;
+    }
+  }
+  return passed;
+}
+
 /** Initialize the circular board */
 function initializeCircularBoard(numSectors) {
   circularBoardState.numSectors = numSectors;
@@ -3108,21 +3145,11 @@ function applyBoardRotation() {
 /** Update visible sky highlighting */
 function updateVisibleSky() {
   const numSectors = circularBoardState.numSectors;
-  const visibleCount = numSectors / 2;
   const start = circularBoardState.visibleSkyStart;
 
   $(".sector").each(function () {
     const sector = parseInt($(this).data("sector"));
-    let isVisible = false;
-
-    // Check if sector is in visible range
-    for (let i = 0; i < visibleCount; i++) {
-      const visibleSector = ((start - 1 + i) % numSectors) + 1;
-      if (sector === visibleSector) {
-        isVisible = true;
-        break;
-      }
-    }
+    const isVisible = isSectorVisible(sector, start, numSectors);
 
     if (circularBoardState.showVisibleSky) {
       $(this).toggleClass("in-visible-sky", isVisible);
@@ -3131,6 +3158,8 @@ function updateVisibleSky() {
       $(this).removeClass("in-visible-sky not-in-visible-sky");
     }
   });
+
+  updateVisibleSkyDetails();
 }
 
 /** Get the confirmed object name for a sector */
@@ -3286,13 +3315,12 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
   // Auto-rotate visible sky to align with the furthest back player (lowest time)
   // The visible sky should show where the "Earth" is in its orbit
   // In the physical game, the Earth disc rotates to align with the furthest back player
-  const timeToSectorRatio = numSectors / maxTimeOnBoard;
-  const earthSector = Math.floor(minTime * timeToSectorRatio) + 1;
+  const earthSector = Number.isFinite(minTime) ? getEarthSectorFromTime(minTime, numSectors) : 1;
 
   // Update visible sky to start at this sector
   const newVisibleSkyStart = ((earthSector - 1) % numSectors) + 1;
   const previousVisibleSkyStart = circularBoardState.visibleSkyStart;
-  let theorySectorTriggered = null;
+  const theorySectorsTriggered = [];
 
   if (circularBoardState.visibleSkyStart !== newVisibleSkyStart) {
     circularBoardState.visibleSkyStart = newVisibleSkyStart;
@@ -3302,21 +3330,19 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
     const mode = currentGameSettings.mode;
     const theorySectors = MODE_SETTINGS[mode]?.theorySectors || [];
 
-    for (const theorySector of theorySectors) {
-      // Check if we just reached or passed this theory sector
-      if (newVisibleSkyStart >= theorySector && previousVisibleSkyStart < theorySector) {
-        theorySectorTriggered = theorySector;
-        break;
-      }
-      // Handle wrap-around (e.g., going from sector 12 to 1)
-      if (newVisibleSkyStart < previousVisibleSkyStart && theorySector <= newVisibleSkyStart) {
-        theorySectorTriggered = theorySector;
-        break;
+    const passedSectors = getSectorsPassedClockwise(
+      previousVisibleSkyStart,
+      newVisibleSkyStart,
+      numSectors
+    );
+    for (const sector of passedSectors) {
+      if (theorySectors.includes(sector)) {
+        theorySectorsTriggered.push(sector);
       }
     }
   }
 
-  return { earthSector, theorySectorTriggered };
+  return { earthSector, theorySectorsTriggered };
 }
 
 /** Show conference alert modal */
@@ -3331,7 +3357,7 @@ function showConferenceAlert(conferenceName, threshold) {
         <ol class="mb-0">
           <li>Open the official app</li>
           <li>Press the "<strong>Planet X Conference</strong>" button</li>
-          <li>Record the logic rule in the Research Notes section under <strong>${conferenceName}</strong></li>
+          <li>Record the logic rule in the Conference Notes section under <strong>${conferenceName}</strong></li>
         </ol>
       </div>
       <p class="text-muted small">All players receive the same information about Planet X's location!</p>

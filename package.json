@@ -1,0 +1,25 @@
+{
+  "name": "planet-x-searching",
+  "version": "1.0.0",
+  "description": "![wakatime](https://wakatime.com/badge/user/8bcd13fa-2f3e-409b-b13c-434e9008e3d9/project/b42443e3-dec9-4027-96c1-32c2b936dc90.svg)",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cschubiner/planet-x-searching.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cschubiner/planet-x-searching/issues"
+  },
+  "homepage": "https://github.com/cschubiner/planet-x-searching#readme",
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0"
+  }
+}
