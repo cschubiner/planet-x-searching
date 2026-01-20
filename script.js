@@ -305,6 +305,81 @@ function clearGameState() {
   updateUndoRedoButtons();
 }
 
+function resetGameSettingsForm() {
+  $("#game-settings input[type='radio']").prop("checked", false);
+  $("#start-game-btn").prop("disabled", true);
+  const $notInPlay = $("#player-color-not-in-play");
+  if ($notInPlay.length) {
+    Object.keys(PLAYER_COLORS).forEach((color) => {
+      $notInPlay.append($(`#${color}-player`));
+    });
+  }
+  $(`.${GAME_SETTINGS.playerColors}`).empty();
+}
+
+function resetCircularBoardState() {
+  circularBoardState.numSectors = 12;
+  circularBoardState.rotation = 0;
+  circularBoardState.visibleSkyStart = 1;
+  circularBoardState.lastEarthSector = 1;
+  circularBoardState.showVisibleSky = true;
+  circularBoardState.selectedSector = null;
+  pendingTheorySectors = [];
+  isTheoryModalActive = false;
+
+  $("#circular-board .sector, #circular-board .player-pawn").remove();
+  $("#center-sector-num").text("");
+  $("#center-object-name").text("");
+  $("#visible-sky-indicator").removeClass("active").attr("style", "");
+  $("#circular-board").css("transform", "rotate(0deg)");
+  $("#toggle-visible-sky").addClass("active");
+}
+
+function resetGameUI({ showSettings = true } = {}) {
+  if (autoSaveTimeout) {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = null;
+  }
+
+  $("#logic-rules-body").empty();
+  $("#research-body").empty();
+  $("#moves-body").empty();
+  $("#theories-body").empty();
+  movesCounter = 0;
+  theoriesCounter = 0;
+  pendingTheorySectors = [];
+  isTheoryModalActive = false;
+
+  $("#sectors-head").children().not("#sectors-head-filler").remove();
+  $("#opposite-row").children().not(":first").remove();
+  $(".object-row").forEach(($row) => {
+    $row.children().not(":first").remove();
+  });
+  $("#hints-notes-row").children().not(":first").remove();
+
+  $("#score-table input").val("");
+  $("#score-total").text("0");
+
+  $("#time-track-display").empty();
+  $("#visible-sky-summary").text("");
+  $("#visible-sky-details").text("");
+  $("#current-turn-display").text("");
+
+  $("#board").addClass("d-none");
+  $("#circular-board-section").addClass("d-none");
+  $("#reset-buttons").addClass("d-none");
+
+  resetCircularBoardState();
+
+  if (showSettings) {
+    $("#game-settings").removeClass("d-none");
+    resetGameSettingsForm();
+    $("#resume-game-prompt").remove();
+    Object.keys(currentGameSettings).forEach((key) => delete currentGameSettings[key]);
+    history.replaceState(null, "", getUrl());
+  }
+}
+
 /** Clears the current UI state before restoring */
 function clearCurrentState() {
   // Clear all hint buttons
@@ -1271,8 +1346,8 @@ function startGame(gameSettings) {
   const numSectors = settings.numSectors;
   const objectSettings = settings.objects;
 
-  // delete game selection buttons
-  $gameSettings.remove();
+  // hide game selection buttons
+  $gameSettings.addClass("d-none");
 
   // show reset buttons
   $("#reset-buttons").removeClass("d-none");
@@ -2389,17 +2464,26 @@ $(() => {
     const autoSave = triggerAutoSave;
 
     // new game button
-    $("#new-game-btn").on("click", (_event) => {
+    $("#new-game-btn")
+      .off("click.newgame")
+      .on("click.newgame", (_event) => {
       if (!confirm("Are you sure you want to start a new game?")) return;
       clearGameState();
-      location.href = getUrl();
-    });
+      resetGameUI({ showSettings: true });
+      });
     // reset button
-    $("#reset-btn").on("click", (_event) => {
+    $("#reset-btn")
+      .off("click.reset")
+      .on("click.reset", (_event) => {
       if (!confirm("Are you sure you want to reset the game?")) return;
+      const settings = {
+        ...currentGameSettings,
+        playerColors: [...currentGameSettings.playerColors],
+      };
       clearGameState();
-      location.href = getUrl(currentGameSettings);
-    });
+      resetGameUI({ showSettings: false });
+      startGame(settings);
+      });
 
     // update hints table whenever a hint is changed
     function isActive($button) {
@@ -2605,29 +2689,35 @@ $(() => {
     });
 
     // Auto-save on contenteditable changes (notes)
-    $(document).on("input", "[contenteditable]", autoSave);
+    $(document)
+      .off("input.autosave", "[contenteditable]")
+      .on("input.autosave", "[contenteditable]", autoSave);
 
     // Auto-save on select changes (research topics)
-    $("#research-body select").on("change", autoSave);
+    $("#research-body")
+      .off("change.autosave", "select")
+      .on("change.autosave", "select", autoSave);
 
     // final score calculator
-    $("#score-table input").on("change", (_event) => {
-      let total = 0;
-      // first theory points
-      total += Number($("#first-theory-points").val());
-      // object points
-      for (const [key, { points }] of Object.entries(
-        MODE_SETTINGS[currentGameSettings.mode].objects
-      )) {
-        if (points == null) continue;
-        const count = Number($(`#${key}-points`).val());
-        total += count * points;
-      }
-      // locating planet x points
-      total += Number($("#locate-planet-x-points").val());
-      $("#score-total").text(total);
-      autoSave();
-    });
+    $("#score-table")
+      .off("change.scorecalc", "input")
+      .on("change.scorecalc", "input", (_event) => {
+        let total = 0;
+        // first theory points
+        total += Number($("#first-theory-points").val());
+        // object points
+        for (const [key, { points }] of Object.entries(
+          MODE_SETTINGS[currentGameSettings.mode].objects
+        )) {
+          if (points == null) continue;
+          const count = Number($(`#${key}-points`).val());
+          total += count * points;
+        }
+        // locating planet x points
+        total += Number($("#locate-planet-x-points").val());
+        $("#score-total").text(total);
+        autoSave();
+      });
 
     // buttons to show/hide sections
     for (const name of [
