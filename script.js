@@ -41,13 +41,13 @@ const MODE_SETTINGS = {
         object: "planet-x",
         count: 1,
         label: "Planet X",
-        rule: "not adjacent to <dwarf-planet>; appears empty",
+        rule: "not adjacent to <dwarf-planet>; appears <empty>",
       },
       {
         object: "truly-empty",
         count: 2,
         label: "Truly Empty Sectors",
-        rule: "(remember: <planet-x> appears empty)",
+        rule: "(remember: <planet-x> appears <empty>)",
       },
     ],
     objects: {
@@ -92,13 +92,13 @@ const MODE_SETTINGS = {
         object: "planet-x",
         count: 1,
         label: "Planet X",
-        rule: "not adjacent to <dwarf-planet>; appears empty",
+        rule: "not adjacent to <dwarf-planet>; appears <empty>",
       },
       {
         object: "truly-empty",
         count: 2,
         label: "Truly Empty Sectors",
-        rule: "(remember: <planet-x> appears empty)",
+        rule: "(remember: <planet-x> appears <empty>)",
       },
     ],
     objects: {
@@ -942,7 +942,11 @@ function createObjectImage(object, attrs = {}) {
     return $("<span>").text("?");
   }
   attrs.src = `images/${object}.png`;
-  attrs.alt = object.toTitleCase();
+  if (object === "empty") {
+    attrs.alt = "Empty (appearance)";
+  } else {
+    attrs.alt = object.toTitleCase();
+  }
   return $("<img>", attrs);
 }
 
@@ -1359,7 +1363,8 @@ function startGame(gameSettings) {
           break;
         }
         const object = rule.slice(startIndex + 1, endIndex);
-        if (!(object in objectSettings)) {
+        const isRuleIcon = object in objectSettings || object === "empty";
+        if (!isRuleIcon) {
           // invalid object; leave as-is
           ruleCell.push($("<span>").text(rule.slice(startIndex, endIndex + 1)));
         } else {
@@ -2846,12 +2851,21 @@ function initializeTutorial() {
       tooltipTriggerEl.setAttribute("data-bs-title", tooltipText);
     }
     tooltipTriggerEl.setAttribute("data-bs-trigger", "hover focus click");
+    tooltipTriggerEl.setAttribute("data-bs-container", "body");
+    tooltipTriggerEl.setAttribute("data-bs-boundary", "window");
     tooltipTriggerEl.setAttribute("role", "button");
     if (!tooltipTriggerEl.hasAttribute("tabindex")) {
       tooltipTriggerEl.setAttribute("tabindex", "0");
     }
-    bootstrap.Tooltip.getOrCreateInstance(tooltipTriggerEl, {
+    const tooltipInstance = bootstrap.Tooltip.getOrCreateInstance(tooltipTriggerEl, {
       trigger: "hover focus click",
+      container: "body",
+      boundary: "window",
+    });
+    tooltipTriggerEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      tooltipInstance.toggle();
     });
   });
 
