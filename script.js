@@ -1243,7 +1243,7 @@ function addTheoryRow(playerColors, numSectors) {
 
 /** Starts the game by initializing the page with the given game settings. */
 function startGame(gameSettings) {
-  const { mode, playerColors, difficulty } = gameSettings;
+  const { mode, playerColors } = gameSettings;
 
   const $gameSettings = $("#game-settings");
   if ($gameSettings.length === 0) return;
@@ -1260,7 +1260,6 @@ function startGame(gameSettings) {
   $("#reset-buttons").removeClass("d-none");
   // show board
   $("#board").removeClass("d-none");
-  $("#difficulty").text(difficulty.toTitleCase());
   // add settings to url
   history.replaceState(null, "", getUrl(gameSettings));
 
@@ -1385,53 +1384,6 @@ function startGame(gameSettings) {
   for (const [object, { points }] of Object.entries(objectSettings)) {
     if (points == null) continue;
     $(`#${object}-per-points`).text(points);
-  }
-
-  // initialize starting info table
-  const numStartingHints = DIFFICULTY_START_HINTS[difficulty] ?? 0;
-  if (numStartingHints === 0) {
-    $("#starting-info-section").remove();
-  } else {
-    $("#starting-info-list").append(
-      Array.fromRange(numStartingHints, (index) => {
-        const hintRadioName = `starting-info-${index}-object`;
-        return $("<li>", { class: "mb-1" }).append(
-          $("<div>", { class: "row gx-2 flex-nowrap text-nowrap" }).append(
-            $("<div>", { class: "col-auto col-form-label" }).text("Sector"),
-            $("<div>", { class: "col-auto" }).append(
-              BootstrapHtml.dropdown(
-                Array.fromRange(numSectors, (index) => index + 1),
-                { onlyLabels: true }
-              )
-            ),
-            $("<div>", { class: "col-auto col-form-label" }).text("is not a"),
-            BootstrapHtml.radioButtonGroup(
-              hintRadioName,
-              ["asteroid", "comet", "dwarf-planet", "gas-cloud"].map(
-                (object) => {
-                  const objectId = `${hintRadioName}-${object}`;
-                  return {
-                    id: objectId,
-                    value: object,
-                    content: [
-                      createObjectImage(object),
-                      " ",
-                      object.unhyphenated().toTitleCase(),
-                    ],
-                  };
-                }
-              ),
-              {
-                divClass: "col-auto",
-                elementClass: "starting-info-object-hint",
-                elementAccent: "secondary",
-              }
-            )
-          )
-        );
-      })
-    );
-    toggleImageWhiteVariant(".starting-info-object-hint");
   }
 
   // initialize conference notes table
@@ -2658,7 +2610,6 @@ $(() => {
     for (const name of [
       "logic-rules",
       "score-calculator",
-      "starting-info",
       "theories",
       "research-notes",
     ]) {
