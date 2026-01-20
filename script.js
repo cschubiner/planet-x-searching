@@ -1497,7 +1497,7 @@ function addMoveRow() {
               ].map((action) => ({ ...action, attrs: { move: moveId } })),
               {
                 id: actionGroupId,
-                divClass: "action-btn-grid",
+                divClass: "action-btn-row",
                 elementAccent: "secondary",
               }
             ),
