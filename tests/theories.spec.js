@@ -59,6 +59,9 @@ test("Advance Theories increments progress to peer review", async ({ page }) => 
 
   await page.click("#advance-theories-btn");
   await expect(page.locator("#theory0")).toHaveAttribute("data-progress", "3");
+
+  await page.click("#advance-theories-btn");
+  await expect(page.locator("#theory0")).toHaveAttribute("data-progress", "4");
   await expect(page.locator("#theory0")).toHaveClass(/table-danger/);
 });
 

@@ -562,8 +562,8 @@ function restoreGameState(state) {
           $row.addClass("table-danger");
         }
         // Set progress to peer review if it was revealed
-        if (theory.revealed && (!theory.progress || theory.progress < 3)) {
-          updateTheoryProgress(theoryId, 3);
+        if (theory.revealed && (!theory.progress || theory.progress < 4)) {
+          updateTheoryProgress(theoryId, 4);
         }
       }
     }
@@ -970,18 +970,20 @@ function toggleImageWhiteVariant(selector) {
 
 let theoriesCounter = 0;
 
-// Theory progress states: 0 = Not submitted, 1 = Placed, 2 = Advanced, 3 = Peer Review
+// Theory progress states: 0 = Not submitted, 1 = Placed, 2 = Advanced, 3 = Approaching, 4 = Peer Review
 const THEORY_PROGRESS = {
   NOT_SUBMITTED: 0,
   PLACED: 1,
   ADVANCED: 2,
-  PEER_REVIEW: 3,
+  APPROACHING: 3,
+  PEER_REVIEW: 4,
 };
 
 const THEORY_PROGRESS_LABELS = {
   [THEORY_PROGRESS.NOT_SUBMITTED]: { label: "Not Submitted", class: "secondary", icon: "dash" },
   [THEORY_PROGRESS.PLACED]: { label: "Placed", class: "info", icon: "1-circle-fill" },
   [THEORY_PROGRESS.ADVANCED]: { label: "Advanced", class: "warning", icon: "2-circle-fill" },
+  [THEORY_PROGRESS.APPROACHING]: { label: "Approaching", class: "warning", icon: "3-circle-fill" },
   [THEORY_PROGRESS.PEER_REVIEW]: { label: "Peer Review!", class: "danger", icon: "exclamation-triangle-fill" },
 };
 
@@ -995,15 +997,15 @@ function createTheoryProgressIndicator(theoryId, progress = THEORY_PROGRESS.NOT_
   // Progress dots
   const $track = $("<div>", { class: "theory-progress-track d-flex align-items-center justify-content-center gap-1" });
 
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 4; i++) {
     const isActive = progress >= i;
     const isCurrent = progress === i;
     let dotClass = "theory-progress-dot";
 
-    if (i === 3) {
+    if (i === 4) {
       // Peer review dot is special
       dotClass += isActive ? " bg-danger" : " bg-secondary opacity-25";
-    } else if (i === 2) {
+    } else if (i === 2 || i === 3) {
       dotClass += isActive ? " bg-warning" : " bg-secondary opacity-25";
     } else {
       dotClass += isActive ? " bg-info" : " bg-secondary opacity-25";
@@ -2660,7 +2662,10 @@ $(() => {
       "theories",
       "research-notes",
     ]) {
-      $(`#${name}-header`).on("click", (_event) => {
+      $(`#${name}-header`).on("click", (event) => {
+        if ($(event.target).closest("button").length > 0) {
+          return;
+        }
         const $btn = $(`#hide-${name}-btn`);
         const showing = $btn.text().trim() === "Show";
         // toggle section
@@ -2879,16 +2884,24 @@ function initializeTutorial() {
   // Initialize Bootstrap tooltips for section help icons
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
   tooltipTriggerList.forEach((tooltipTriggerEl) => {
-    if (
-      !tooltipTriggerEl.getAttribute("title") &&
-      !tooltipTriggerEl.getAttribute("data-bs-title")
-    ) {
+    const tooltipText =
+      tooltipTriggerEl.getAttribute("title") ||
+      tooltipTriggerEl.getAttribute("data-bs-title") ||
+      tooltipTriggerEl.getAttribute("aria-label") ||
+      "";
+    if (!tooltipText) {
       tooltipTriggerEl.setAttribute("title", "Help");
+    } else {
+      tooltipTriggerEl.setAttribute("data-bs-title", tooltipText);
     }
+    tooltipTriggerEl.setAttribute("data-bs-trigger", "hover focus click");
+    tooltipTriggerEl.setAttribute("role", "button");
     if (!tooltipTriggerEl.hasAttribute("tabindex")) {
       tooltipTriggerEl.setAttribute("tabindex", "0");
     }
-    new bootstrap.Tooltip(tooltipTriggerEl);
+    bootstrap.Tooltip.getOrCreateInstance(tooltipTriggerEl, {
+      trigger: "hover focus click",
+    });
   });
 
   // Show tutorial automatically for first-time users
