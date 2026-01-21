@@ -119,6 +119,50 @@ const MODE_SETTINGS = {
 };
 
 const THEME_STORAGE_KEY = "planet-x-theme";
+const THEME_IMAGE_BASES = new Set([
+  "asteroid",
+  "comet",
+  "dwarf-planet",
+  "empty",
+  "gas-cloud",
+  "planet-x",
+  "truly-empty",
+]);
+
+function getThemeObjectSrc(object, { forceWhite = false } = {}) {
+  if (!object || !THEME_IMAGE_BASES.has(object)) {
+    return object ? `images/${object}.png` : "";
+  }
+  const isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
+  const useWhite = forceWhite || isDark;
+  return `images/${object}${useWhite ? "-white" : ""}.png`;
+}
+
+function shouldForceWhiteForImage($img) {
+  const $label = $img.closest("label[for]");
+  if ($label.length === 0) return false;
+  const inputId = $label.attr("for");
+  if (!inputId) return false;
+  const input = document.getElementById(inputId);
+  return Boolean(input?.checked);
+}
+
+function updateThemeImages(theme) {
+  const isDark = theme === "dark";
+  $("img").forEach(($img) => {
+    const srcAttr = $img.attr("src");
+    if (!srcAttr || !srcAttr.includes("images/")) return;
+    const match = srcAttr.match(/images\/([a-z-]+)(-white)?\.png$/i);
+    if (!match) return;
+    const base = match[1];
+    if (!THEME_IMAGE_BASES.has(base)) return;
+    const forceWhite = isDark || shouldForceWhiteForImage($img);
+    const nextSrc = `images/${base}${forceWhite ? "-white" : ""}.png`;
+    if (srcAttr !== nextSrc) {
+      $img.attr("src", nextSrc);
+    }
+  });
+}
 
 function getPreferredTheme() {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -142,6 +186,7 @@ function applyTheme(theme, { persist = true } = {}) {
     .toggleClass("bi-moon-stars", !isDark)
     .toggleClass("bi-sun", isDark);
   $("#theme-toggle-label").text(isDark ? "Light Mode" : "Dark Mode");
+  updateThemeImages(normalized);
   if (persist) {
     localStorage.setItem(THEME_STORAGE_KEY, normalized);
   }
@@ -1111,7 +1156,7 @@ function createObjectImage(object, attrs = {}) {
     console.warn("createObjectImage called with invalid object:", object);
     return $("<span>").text("?");
   }
-  attrs.src = `images/${object}.png`;
+  attrs.src = getThemeObjectSrc(object);
   if (object === "empty") {
     attrs.alt = "Empty (appearance)";
   } else {
@@ -1124,12 +1169,11 @@ function toggleImageWhiteVariant(selector) {
   $(selector).on("change", (event) => {
     const name = $(event.target).attr("name");
     $(`input[name="${name}"]`).forEach(($input) => {
-      let variant = "";
-      if ($input.prop("checked")) {
-        // set image to white variant
-        variant = "-white";
-      }
       const object = $input.val();
+      if (!THEME_IMAGE_BASES.has(object)) return;
+      const isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
+      const shouldWhite = isDark || $input.prop("checked");
+      const variant = shouldWhite ? "-white" : "";
       const labelId = $input.getId() + "-label";
       // Only update if we have a valid object value and label
       if (object && labelId) {
