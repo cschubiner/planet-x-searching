@@ -464,6 +464,7 @@ function resetCircularBoardState() {
   circularBoardState.rotation = 0;
   circularBoardState.visibleSkyStart = 1;
   circularBoardState.lastEarthSector = 1;
+  circularBoardState.lastMinTime = 0;
   circularBoardState.showVisibleSky = true;
   circularBoardState.showVisibleSkyTable = true;
   circularBoardState.selectedSector = null;
@@ -2408,6 +2409,19 @@ function getPlayerTimesFromMoves() {
   return playerTimes;
 }
 
+function getLatestMoveNumWithSelections() {
+  let latest = null;
+  $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
+    if ($row.find('input[type="radio"]:checked').length === 0) return;
+    const moveNum = Number($row.attr("moveNum"));
+    if (!Number.isFinite(moveNum)) return;
+    if (latest == null || moveNum > latest) {
+      latest = moveNum;
+    }
+  });
+  return latest;
+}
+
 /** Adds a row to the moves table. */
 function addMoveRow() {
   const numSectors = MODE_SETTINGS[currentGameSettings.mode].numSectors;
@@ -2665,7 +2679,7 @@ function addMoveRow() {
     }
   }
 
-  function updateTimeTrack({ autoSave = true } = {}) {
+  function updateTimeTrack({ autoSave = true, allowTheoryTrigger = true } = {}) {
     // Calculate cumulative time for each player from move rows
     const playerTimes = getPlayerTimesFromMoves();
 
@@ -2748,7 +2762,8 @@ function addMoveRow() {
       const { theorySectorsTriggered } = updateCircularBoardPlayers(
         playerTimes,
         nextPlayer,
-        minTime
+        minTime,
+        { allowTheoryTrigger: allowTheoryTrigger && !isRestoringState }
       );
 
       // Check for theory phase triggers
@@ -2873,7 +2888,10 @@ function addMoveRow() {
     }
 
     updatePlayerResearches();
-    updateTimeTrack();
+    const moveNum = Number($row.attr("moveNum"));
+    const latestMoveNum = getLatestMoveNumWithSelections();
+    const allowTheoryTrigger = Number.isFinite(moveNum) && moveNum === latestMoveNum;
+    updateTimeTrack({ allowTheoryTrigger });
   });
 
   updateTimeTrack({ autoSave: false });
@@ -3917,6 +3935,7 @@ let circularBoardState = {
   rotation: 0,
   visibleSkyStart: 1,
   lastEarthSector: 1,
+  lastMinTime: 0,
   showVisibleSky: true,
   showVisibleSkyTable: true,
   selectedSector: null,
@@ -4005,6 +4024,7 @@ function initializeCircularBoard(numSectors) {
   circularBoardState.rotation = 0;
   circularBoardState.visibleSkyStart = 1;
   circularBoardState.lastEarthSector = 1;
+  circularBoardState.lastMinTime = 0;
   circularBoardState.selectedSector = null;
 
   const $board = $("#circular-board");
@@ -4593,7 +4613,7 @@ function hookCircularBoardToHints() {
 }
 
 /** Update player positions on the circular board and auto-rotate visible sky */
-function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
+function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime, options = {}) {
   const $board = $("#circular-board");
   const numSectors = circularBoardState.numSectors;
   const trackSize = numSectors; // Time track wraps once per sector count
@@ -4646,6 +4666,7 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
   // Update visible sky to start at this sector
   const newVisibleSkyStart = ((earthSector - 1) % numSectors) + 1;
   const previousEarthSector = circularBoardState.lastEarthSector;
+  const previousMinTime = circularBoardState.lastMinTime;
   const theorySectorsTriggered = [];
 
   if (circularBoardState.visibleSkyStart !== newVisibleSkyStart) {
@@ -4656,18 +4677,27 @@ function updateCircularBoardPlayers(playerTimes, nextPlayer, minTime) {
   // Check if we crossed a theory sector based on Earth marker movement
   const mode = currentGameSettings.mode;
   const theorySectors = MODE_SETTINGS[mode]?.theorySectors || [];
-  const passedSectors = getSectorsPassedClockwise(
-    previousEarthSector,
-    earthSector,
-    numSectors
-  );
-  for (const sector of passedSectors) {
-    if (theorySectors.includes(sector)) {
-      theorySectorsTriggered.push(sector);
+  const allowTheoryTrigger = options.allowTheoryTrigger !== false;
+  const shouldTrigger =
+    allowTheoryTrigger &&
+    Number.isFinite(previousMinTime) &&
+    Number.isFinite(minTime) &&
+    minTime > previousMinTime;
+  if (shouldTrigger) {
+    const passedSectors = getSectorsPassedClockwise(
+      previousEarthSector,
+      earthSector,
+      numSectors
+    );
+    for (const sector of passedSectors) {
+      if (theorySectors.includes(sector)) {
+        theorySectorsTriggered.push(sector);
+      }
     }
   }
 
   circularBoardState.lastEarthSector = earthSector;
+  circularBoardState.lastMinTime = minTime;
 
   return { earthSector, theorySectorsTriggered };
 }

@@ -53,6 +53,47 @@ test("Theory phase triggers when visible sky reaches sector 3", async ({ page })
   await expect(modal).toContainText("Theory Phase at Sector 3");
 });
 
+test("Editing earlier moves does not retrigger later theory phases", async ({ page }) => {
+  await startGame(page);
+
+  const firstRow = page.locator("#moves-body tr").first();
+  await firstRow.locator("label[for$='-player-blue']").click();
+  await firstRow.locator("label[for$='-action-target']").click();
+  await firstRow.locator('[action="target"] select').selectOption("1");
+
+  const secondRow = page.locator("#moves-body tr").nth(1);
+  await secondRow.locator("label[for$='-player-red']").click();
+  await secondRow.locator("label[for$='-action-target']").click();
+  await secondRow.locator('[action="target"] select').selectOption("2");
+
+  const modal = page.locator("#theory-phase-alert-modal");
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText("Theory Phase at Sector 3");
+  await modal.locator("button.btn-close").click();
+  await expect(modal).toBeHidden();
+
+  const thirdRow = page.locator("#moves-body tr").nth(2);
+  await thirdRow.locator("label[for$='-player-blue']").click();
+  await thirdRow.locator("label[for$='-action-research']").click();
+  await thirdRow.locator("label[for$='-action-research-area-A']").click();
+
+  const fourthRow = page.locator("#moves-body tr").nth(3);
+  await fourthRow.locator("label[for$='-player-red']").click();
+  await fourthRow.locator("label[for$='-action-research']").click();
+  const secondModal = page.locator("#theory-phase-alert-modal");
+  await expect(secondModal).toBeVisible();
+  await expect(secondModal).toContainText("Theory Phase at Sector 6");
+  await secondModal.locator("button.btn-close").click();
+  await expect(secondModal).toBeHidden();
+
+  await fourthRow.locator("label[for$='-action-research-area-B']").click();
+
+  // Edit the first row after a later theory phase already triggered.
+  await firstRow.locator('[action="target"] select').selectOption("4");
+
+  await expect(page.locator("#theory-phase-alert-modal")).toBeHidden();
+});
+
 test("Conference triggers at time threshold", async ({ page }) => {
   await startGame(page);
 
