@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-US">
+<html lang="en-US" data-bs-theme="light">
   <head>
     <!-- Meta tags for Bootstrap -->
     <meta charset="utf-8" />
@@ -39,7 +39,7 @@
 
       <div class="mb-2">
         <span class="h1">Planet X Searching</span>
-        <span class="h6 fst-italic text-black text-opacity-50 ms-1">
+        <span class="h6 fst-italic text-body-secondary ms-1">
           (<a href="changelog.html" class="text-reset">v0.16</a>)
         </span>
         <button type="button" id="tutorial-btn" class="btn btn-outline-info btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#tutorial-modal">
@@ -48,6 +48,10 @@
         <a href="RULES.md" target="_blank" class="btn btn-outline-secondary btn-sm ms-1">
           <i class="bi bi-book"></i> Full Rules
         </a>
+        <button type="button" id="theme-toggle" class="btn btn-outline-dark btn-sm ms-1" aria-pressed="false">
+          <i id="theme-toggle-icon" class="bi bi-moon-stars"></i>
+          <span id="theme-toggle-label">Dark Mode</span>
+        </button>
       </div>
 
       <!-- Tutorial Modal -->

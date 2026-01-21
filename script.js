@@ -117,6 +117,41 @@ const MODE_SETTINGS = {
     theorySectors: [3, 6, 9, 12, 15, 18], // Theory phases trigger when visible sky reaches these sectors
   },
 };
+
+const THEME_STORAGE_KEY = "planet-x-theme";
+
+function getPreferredTheme() {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+  return "light";
+}
+
+function applyTheme(theme, { persist = true } = {}) {
+  const normalized = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-bs-theme", normalized);
+  const isDark = normalized === "dark";
+  const $toggle = $("#theme-toggle");
+  $toggle
+    .attr("aria-pressed", isDark ? "true" : "false")
+    .toggleClass("btn-outline-light", isDark)
+    .toggleClass("btn-outline-dark", !isDark);
+  $("#theme-toggle-icon")
+    .toggleClass("bi-moon-stars", !isDark)
+    .toggleClass("bi-sun", isDark);
+  $("#theme-toggle-label").text(isDark ? "Light Mode" : "Dark Mode");
+  if (persist) {
+    localStorage.setItem(THEME_STORAGE_KEY, normalized);
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-bs-theme");
+  applyTheme(current === "dark" ? "light" : "dark");
+}
+
 const DIFFICULTY_START_HINTS = {
   youth: 12,
   beginner: 8,
@@ -3064,6 +3099,9 @@ function initializeTutorial() {
 
 // Initialize tutorial when document is ready
 $(document).ready(function () {
+  applyTheme(getPreferredTheme(), { persist: false });
+  $("#theme-toggle").on("click", toggleTheme);
+
   initializeTutorial();
 
   // Undo/Redo button event handlers

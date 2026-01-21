@@ -1,3 +1,19 @@
+:root {
+  --px-surface: #f8f9fa;
+  --px-table-bg: #ffffff;
+  --px-table-secondary: #b9c0c9;
+  --px-border-subtle: #dee2e6;
+  --px-text-muted: #6c757d;
+}
+
+[data-bs-theme="dark"] {
+  --px-surface: #1b232c;
+  --px-table-bg: #10151b;
+  --px-table-secondary: #2a3440;
+  --px-border-subtle: #2a323c;
+  --px-text-muted: #9aa4b2;
+}
+
 /* Copy Bootstrap's `bg-*`, but with purple instead */
 .bg-purple {
   --bs-bg-opacity: 1;
@@ -70,13 +86,14 @@ img.time {
    columns, we had to separate the borders and make sure they didn't double up
    between cells (so not using `.table-bordered`). */
 #hints-table {
-  --bs-table-bg: var(--bs-white);
+  --bs-table-bg: var(--px-table-bg);
   border-collapse: separate;
   border-spacing: 0;
 }
 
 #hints-table .hint-cell.table-secondary {
-  background-color: #b9c0c9;
+  background-color: var(--px-table-secondary);
+  color: var(--bs-body-color);
 }
 
 #hints-table > * > :first-child > :first-child {
@@ -105,6 +122,7 @@ img.time {
   /* Increase the z-index so that other elements don't appear over the frozen
      columns. */
   z-index: 1000;
+  background-color: var(--px-table-bg);
 }
 
 /* First column of hints table */
@@ -177,8 +195,26 @@ textarea {
 /* Time track section */
 #time-track-section {
   padding: 0.5rem;
-  background-color: var(--bs-light);
+  background-color: var(--px-surface);
+  border: 1px solid var(--px-border-subtle);
   border-radius: 0.375rem;
+}
+
+[data-bs-theme="dark"] .table-light {
+  --bs-table-bg: #1f2937;
+  --bs-table-striped-bg: #1a2430;
+  --bs-table-hover-bg: #263246;
+  --bs-table-active-bg: #2c3a51;
+  --bs-table-border-color: #2a323c;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .table-secondary {
+  --bs-table-bg: #2a3440;
+  --bs-table-striped-bg: #27313c;
+  --bs-table-hover-bg: #303b4a;
+  --bs-table-border-color: #333f4f;
+  color: var(--bs-body-color);
 }
 
 #time-track-display .badge {
