@@ -197,6 +197,54 @@ function toggleTheme() {
   applyTheme(current === "dark" ? "light" : "dark");
 }
 
+function showShortcutsModal() {
+  const modalEl = document.getElementById("shortcuts-modal");
+  if (!modalEl || typeof bootstrap === "undefined") return;
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+}
+
+function isEditableTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName?.toLowerCase();
+  if (["input", "textarea", "select"].includes(tag)) return true;
+  if (target.isContentEditable) return true;
+  return Boolean($(target).closest('[contenteditable="true"]').length);
+}
+
+function isMoveRowEmpty($row) {
+  if (!$row || $row.length === 0) return true;
+  if ($row.find('input[type="radio"]:checked, input[type="checkbox"]:checked').length > 0) {
+    return false;
+  }
+  const hasSelectValue = $row.find("select").toArray().some((select) => {
+    return Boolean(select.value);
+  });
+  if (hasSelectValue) return false;
+  const notesText = $row.find('[contenteditable="true"]').text().trim();
+  return notesText.length === 0;
+}
+
+function addMoveRowShortcut() {
+  if (!currentGameSettings.mode) return;
+  const $rows = $("#moves-body tr");
+  const $lastRow = $rows.last();
+  if ($lastRow.length && isMoveRowEmpty($lastRow)) {
+    $lastRow.get(0)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  addMoveRow();
+  $("#moves-body tr").last().get(0)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cycleSkyMapInputMode() {
+  if (!currentGameSettings.mode) return;
+  const order = [null, "survey", "target"];
+  const idx = order.indexOf(skyMapInputMode);
+  const next = order[(idx + 1) % order.length];
+  setSkyMapInputMode(next);
+}
+
 const DIFFICULTY_START_HINTS = {
   youth: 12,
   beginner: 8,
@@ -3163,14 +3211,34 @@ $(document).ready(function () {
     if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
       undo();
+      return;
     }
     // Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z for redo
-    else if (
+    if (
       ((e.ctrlKey || e.metaKey) && e.key === "y") ||
       ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
     ) {
       e.preventDefault();
       redo();
+      return;
+    }
+
+    if (isEditableTarget(e.target)) return;
+
+    if (
+      (e.key === "?" || (e.key === "/" && e.shiftKey)) &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
+      e.preventDefault();
+      showShortcutsModal();
+    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+      e.preventDefault();
+      addMoveRowShortcut();
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "m") {
+      e.preventDefault();
+      cycleSkyMapInputMode();
     }
   });
 });

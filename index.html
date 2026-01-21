@@ -394,6 +394,52 @@
         </div>
       </div>
 
+      <!-- Keyboard Shortcuts Modal -->
+      <div class="modal fade" id="shortcuts-modal" tabindex="-1" aria-labelledby="shortcuts-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="shortcuts-modal-label">
+                <i class="bi bi-keyboard"></i> Keyboard Shortcuts
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-3 text-body-secondary">Press <kbd>?</kbd> any time to open this cheat sheet.</p>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Action</th>
+                      <th scope="col">Shortcut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Undo</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Cmd</kbd> + <kbd>Z</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Redo</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Add move row</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle sky map input mode</td>
+                      <td><kbd>M</kbd></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="small text-body-secondary mb-0">Shortcuts are disabled while typing in inputs or notes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="game-settings" class="container-fluid px-0 mb-3">
         <div class="row mb-2">
           <div class="col-sm-1 game-settings-col col-form-label">
