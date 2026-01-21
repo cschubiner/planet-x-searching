@@ -544,13 +544,18 @@
           <div class="col">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h4 class="mb-0">Game Board</h4>
-              <div class="btn-group" role="group" aria-label="Undo/Redo controls">
-                <button type="button" id="undo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Undo (Ctrl+Z)">
-                  <i class="bi bi-arrow-counterclockwise"></i> Undo
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" id="toggle-visible-sky-table" class="btn btn-outline-info btn-sm active" title="Toggle visible sky band in table">
+                  <i class="bi bi-eye"></i> Sky Band
                 </button>
-                <button type="button" id="redo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Redo (Ctrl+Y)">
-                  <i class="bi bi-arrow-clockwise"></i> Redo
-                </button>
+                <div class="btn-group" role="group" aria-label="Undo/Redo controls">
+                  <button type="button" id="undo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Undo (Ctrl+Z)">
+                    <i class="bi bi-arrow-counterclockwise"></i> Undo
+                  </button>
+                  <button type="button" id="redo-btn" class="btn btn-outline-secondary btn-sm" disabled title="Redo (Ctrl+Y)">
+                    <i class="bi bi-arrow-clockwise"></i> Redo
+                  </button>
+                </div>
               </div>
             </div>
             <div class="table-responsive position-relative">

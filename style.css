@@ -91,6 +91,15 @@ img.time {
   border-spacing: 0;
 }
 
+#hints-table .visible-sky-band {
+  box-shadow: inset 0 0 0 9999px rgba(13, 110, 253, 0.08);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+[data-bs-theme="dark"] #hints-table .visible-sky-band {
+  box-shadow: inset 0 0 0 9999px rgba(13, 110, 253, 0.18);
+}
+
 #hints-table .hint-cell.table-secondary {
   background-color: var(--px-table-secondary);
   color: var(--bs-body-color);

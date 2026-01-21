@@ -451,6 +451,7 @@ function resetCircularBoardState() {
   circularBoardState.visibleSkyStart = 1;
   circularBoardState.lastEarthSector = 1;
   circularBoardState.showVisibleSky = true;
+  circularBoardState.showVisibleSkyTable = true;
   circularBoardState.selectedSector = null;
   pendingTheorySectors = [];
   isTheoryModalActive = false;
@@ -464,6 +465,7 @@ function resetCircularBoardState() {
   $("#visible-sky-indicator").removeClass("active").attr("style", "");
   $("#circular-board").css("transform", "rotate(0deg)");
   $("#toggle-visible-sky").addClass("active");
+  $("#toggle-visible-sky-table").addClass("active");
   $("#sky-map-input-status").text("Sky map input: Off");
 }
 
@@ -3205,6 +3207,12 @@ $(document).ready(function () {
     redo();
   });
 
+  $("#toggle-visible-sky-table").on("click", function () {
+    $(this).toggleClass("active");
+    circularBoardState.showVisibleSkyTable = $(this).hasClass("active");
+    updateHintsVisibleSkyBand();
+  });
+
   // Keyboard shortcuts for undo/redo
   $(document).on("keydown", function (e) {
     // Ctrl+Z or Cmd+Z for undo
@@ -3250,6 +3258,7 @@ let circularBoardState = {
   visibleSkyStart: 1,
   lastEarthSector: 1,
   showVisibleSky: true,
+  showVisibleSkyTable: true,
   selectedSector: null,
 };
 let pendingTheorySectors = [];
@@ -3799,6 +3808,21 @@ function updateVisibleSky() {
   });
 
   updateVisibleSkyDetails();
+  updateHintsVisibleSkyBand();
+}
+
+function updateHintsVisibleSkyBand() {
+  const $cells = $("#hints-table [data-sector]");
+  if ($cells.length === 0) return;
+  const numSectors = circularBoardState.numSectors;
+  const start = circularBoardState.visibleSkyStart;
+  const showBand = circularBoardState.showVisibleSkyTable;
+  $cells.forEach(($cell) => {
+    const sector = parseInt($cell.attr("data-sector"));
+    if (!Number.isFinite(sector)) return;
+    const isVisible = isSectorVisible(sector, start, numSectors);
+    $cell.toggleClass("visible-sky-band", showBand && isVisible);
+  });
 }
 
 /** Get the confirmed object name for a sector */
