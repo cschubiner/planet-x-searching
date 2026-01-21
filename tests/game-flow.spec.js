@@ -85,3 +85,30 @@ test("Tooltip icons keep titles", async ({ page }) => {
   });
   expect(tooltipText).toMatch(/.+/);
 });
+
+test("Sky map survey prompts for object selection", async ({ page }) => {
+  await startGame(page);
+
+  const moveRow = page.locator("#moves-body tr").first();
+  const moveId = await moveRow.getAttribute("id");
+
+  await page.locator("#sky-map-mode-survey").click();
+  await page.locator('.sector[data-sector="2"]').click();
+
+  const toast = page.locator("#sky-map-survey-toast");
+  await expect(toast).toBeVisible();
+
+  await toast.locator('.sky-map-object-btn[data-object="asteroid"]').click();
+
+  await expect(
+    page.locator(`input[name="${moveId}-action"][value="survey"]`)
+  ).toBeChecked();
+  await expect(
+    page.locator(
+      `input[name="${moveId}-action-survey-object"][value="asteroid"]`
+    )
+  ).toBeChecked();
+  await expect(
+    page.locator(`#${moveId}-action-survey-sector-start`)
+  ).toHaveValue("2");
+});
