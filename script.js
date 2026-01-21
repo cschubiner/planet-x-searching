@@ -512,6 +512,7 @@ function resetGameUI({ showSettings = true } = {}) {
   $("#visible-sky-summary").text("");
   $("#visible-sky-details").text("");
   $("#current-turn-display").text("");
+  $("#next-player-text").text("Start the game to see turn order.");
 
   $("#board").addClass("d-none");
   $("#circular-board-section").addClass("d-none");
@@ -1856,6 +1857,29 @@ function updateAutoScoreTiebreaker(perPlayer) {
   $summary.text(`Tie at ${maxTotal} points remains after tie-breakers.`);
 }
 
+function updateNextPlayerBanner(nextPlayers, minTime) {
+  const $banner = $("#next-player-banner");
+  const $text = $("#next-player-text");
+  if (!$banner.length || !$text.length) return;
+
+  if (!currentGameSettings.mode || !nextPlayers || nextPlayers.length === 0) {
+    $text.text("Start the game to see turn order.");
+    return;
+  }
+
+  if (nextPlayers.length === 1) {
+    const player = nextPlayers[0];
+    const colorClass = PLAYER_COLORS[player];
+    $text.html(
+      `Next up: <span class="text-${colorClass}">${player.toTitleCase()}</span> (time ${minTime})`
+    );
+    return;
+  }
+
+  const names = nextPlayers.map((player) => player.toTitleCase()).join(" & ");
+  $text.text(`Tie for next: ${names} (time ${minTime})`);
+}
+
 function getEndgameAllowance(behind) {
   if (behind >= 1 && behind <= 3) return 1;
   if (behind >= 4 && behind <= 5) return 2;
@@ -2641,17 +2665,23 @@ function addMoveRow() {
     }
   }
 
-  function updateTimeTrack() {
+  function updateTimeTrack({ autoSave = true } = {}) {
     // Calculate cumulative time for each player from move rows
     const playerTimes = getPlayerTimesFromMoves();
 
     // Find player furthest behind (lowest time = next turn)
     let minTime = Infinity;
     let nextPlayer = null;
+    const nextPlayers = [];
     for (const color of currentGameSettings.playerColors) {
       if (playerTimes[color] < minTime) {
         minTime = playerTimes[color];
         nextPlayer = color;
+      }
+    }
+    for (const color of currentGameSettings.playerColors) {
+      if (playerTimes[color] === minTime) {
+        nextPlayers.push(color);
       }
     }
 
@@ -2666,10 +2696,10 @@ function addMoveRow() {
     for (const color of currentGameSettings.playerColors) {
       const time = playerTimes[color];
       const position = getTrackPosition(time, trackSize);
-      const isNext = color === nextPlayer;
+      const isNext = nextPlayers.includes(color);
       const accent = PLAYER_COLORS[color];
       const $badge = $("<span>", {
-        class: `badge bg-${accent} me-2 ${isNext ? "border border-dark border-2" : ""}`,
+        class: `badge bg-${accent} me-2 ${isNext ? "next-player-badge" : ""}`,
         title: `Track wraps at ${trackSize}. Current lap position: ${position}, Total time spent: ${time}`,
       }).text(`${color.charAt(0).toUpperCase()}: ${time} (pos ${position}/${trackSize})`);
       $display.append($badge);
@@ -2677,13 +2707,17 @@ function addMoveRow() {
 
     // Update current turn indicator
     const $turnDisplay = $("#current-turn-display");
-    if (nextPlayer) {
+    if (nextPlayers.length === 1) {
       $turnDisplay.html(
-        `Next turn: <strong class="text-${PLAYER_COLORS[nextPlayer]}">${nextPlayer.toTitleCase()}</strong> (lowest time: ${minTime})`
+        `Next turn: <strong class="text-${PLAYER_COLORS[nextPlayers[0]]}">${nextPlayers[0].toTitleCase()}</strong> (lowest time: ${minTime})`
       );
+    } else if (nextPlayers.length > 1) {
+      const names = nextPlayers.map((player) => player.toTitleCase()).join(" & ");
+      $turnDisplay.text(`Tie for next: ${names} (lowest time: ${minTime})`);
     } else {
       $turnDisplay.text("");
     }
+    updateNextPlayerBanner(nextPlayers, minTime);
 
     // Check for conference triggers
     const maxTime = Math.max(...Object.values(playerTimes));
@@ -2732,7 +2766,9 @@ function addMoveRow() {
     }
 
     // Auto-save on move changes
-    triggerAutoSave();
+    if (autoSave) {
+      triggerAutoSave();
+    }
   }
 
   // only includes the player and action selections (not notes)
@@ -2839,6 +2875,8 @@ function addMoveRow() {
     updatePlayerResearches();
     updateTimeTrack();
   });
+
+  updateTimeTrack({ autoSave: false });
 
   // when the action is changed, show its args
   $(`input[name="${actionSelectId}"]`).on("change", (_event) => {

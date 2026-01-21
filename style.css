@@ -270,6 +270,40 @@ textarea {
   border-radius: 0.375rem;
 }
 
+.next-player-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(13, 110, 253, 0.2);
+  background: rgba(13, 110, 253, 0.08);
+}
+
+[data-bs-theme="dark"] .next-player-banner {
+  border-color: rgba(13, 110, 253, 0.35);
+  background: rgba(13, 110, 253, 0.18);
+}
+
+.next-player-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--px-text-muted);
+  font-weight: 600;
+}
+
+.next-player-text {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.next-player-badge {
+  border: 2px solid #fff !important;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.35);
+}
+
 [data-bs-theme="dark"] .table-light {
   --bs-table-bg: #1f2937;
   --bs-table-striped-bg: #1a2430;
