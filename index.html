@@ -440,6 +440,68 @@
         </div>
       </div>
 
+      <!-- Endgame Helper Modal -->
+      <div class="modal fade" id="endgame-modal" tabindex="-1" aria-labelledby="endgame-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="endgame-modal-label">
+                <i class="bi bi-flag-fill"></i> Endgame Helper
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info small">
+                After Planet X is correctly located, players 1–3 sectors behind may submit 1 theory (or attempt to locate),
+                and players 4–5 sectors behind may submit up to 2 theories (or attempt to locate). No pawn movement occurs
+                during these final opportunities.
+              </div>
+              <div class="card endgame-card mb-3">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div>
+                    <div class="fw-semibold">Who located Planet X correctly?</div>
+                    <div id="endgame-finder-group" class="btn-group btn-group-sm mt-1" role="group"></div>
+                  </div>
+                  <div class="text-end">
+                    <button type="button" id="endgame-refresh-times" class="btn btn-outline-secondary btn-sm">
+                      Refresh times
+                    </button>
+                    <div id="endgame-snapshot-note" class="small text-muted mt-1">
+                      Using current time track snapshot.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table id="endgame-table" class="table table-bordered align-middle text-center">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Player</th>
+                      <th scope="col">Time</th>
+                      <th scope="col">Behind</th>
+                      <th scope="col">Allowance</th>
+                      <th scope="col">Choice</th>
+                      <th scope="col">Theories</th>
+                      <th scope="col">Locate Result</th>
+                    </tr>
+                  </thead>
+                  <tbody id="endgame-body"></tbody>
+                </table>
+              </div>
+              <div class="small text-muted">
+                Tip: Selecting “Submit theories” will add new theory rows pre‑tagged as Final, so they score as simultaneous.
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" id="endgame-apply-btn" class="btn btn-primary">
+                Apply Endgame
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="game-settings" class="container-fluid px-0 mb-3">
         <div class="row mb-2">
           <div class="col-sm-1 game-settings-col col-form-label">
@@ -718,6 +780,7 @@
                       <tr>
                         <th scope="col" class="small-col">Player</th>
                         <th scope="col" class="small-col">Sector</th>
+                        <th scope="col" class="small-col">Submitted</th>
                         <th scope="col">Object</th>
                         <th scope="col" class="text-center" style="min-width: 120px;">Progress</th>
                         <th scope="col" class="small-col text-center">Correct?</th>
@@ -736,6 +799,17 @@
               <div class="col">
                 <div id="score-calculator-header" class="row mb-2">
                   <div class="col-auto"><h3>Final Score Calculator <i class="bi bi-question-circle-fill text-info section-help" data-bs-toggle="tooltip" data-bs-placement="right" title="After End Game in the app, remove incorrect theory tokens. Enter how many correct theories you submitted for each object, your first-correct-theory bonuses, and your Planet X points."></i></h3></div>
+                  <div class="col-auto">
+                    <button
+                      type="button"
+                      id="endgame-helper-btn"
+                      class="btn btn-sm btn-outline-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#endgame-modal"
+                    >
+                      Endgame Helper
+                    </button>
+                  </div>
                   <div class="col-auto">
                     <button
                       type="button"
@@ -874,6 +948,47 @@
                   <strong>How it works:</strong> After End Game, flip theory tokens, remove incorrect ones, and count your correct theories.
                   Enter the number of sectors where you were first (or tied) to submit a correct theory (1 point each), the count of your correct
                   theories by object (multiplied by the value shown), and your Planet X points (10 if first, otherwise 2 per sector behind the first finder).
+                </div>
+                <div class="card mt-3" id="auto-score-card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-calculator"></i> Auto Score Summary</span>
+                    <span class="badge bg-info text-dark">Beta</span>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table id="auto-score-table" class="table table-bordered align-middle text-center text-nowrap">
+                        <thead>
+                          <tr>
+                            <th scope="col">Player</th>
+                            <th scope="col">First Theories</th>
+                            <th scope="col">
+                              <img src="images/asteroid.png" alt="Asteroid" />
+                              Asteroid
+                            </th>
+                            <th scope="col">
+                              <img src="images/comet.png" alt="Comet" />
+                              Comet
+                            </th>
+                            <th scope="col">
+                              <img src="images/gas-cloud.png" alt="Gas Cloud" />
+                              Gas Cloud
+                            </th>
+                            <th scope="col">
+                              <img src="images/dwarf-planet.png" alt="Dwarf Planet" />
+                              Dwarf Planet
+                            </th>
+                            <th scope="col">
+                              <img src="images/planet-x.png" alt="Planet X" />
+                              Planet X
+                            </th>
+                            <th scope="col">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody id="auto-score-body"></tbody>
+                      </table>
+                    </div>
+                    <div id="auto-score-tiebreaker" class="text-muted small"></div>
+                  </div>
                 </div>
               </div>
             </div>

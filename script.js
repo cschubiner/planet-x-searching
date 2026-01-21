@@ -364,11 +364,25 @@ function getCurrentState() {
     const object = $row.find(`input[name="${theoryId}-object"]:checked`).attr("value");
     const progress = parseInt($row.attr("data-progress") || "0");
     const result = $row.find(`input[name="${theoryId}-result"]:checked`).val() || "pending";
+    const order = parseInt($row.find(`#${theoryId}-submit-order`).val());
+    const phase = $row.find(`#${theoryId}-phase`).val() || "main";
 
-    if (player || sector || object || progress > 0 || result !== "pending") {
-      state.theories.push({ player, sector, object, progress, result });
+    if (player || sector || object || progress > 0 || result !== "pending" || Number.isFinite(order) || phase !== "main") {
+      state.theories.push({
+        player,
+        sector,
+        object,
+        progress,
+        result,
+        order: Number.isFinite(order) ? order : null,
+        phase,
+      });
     }
   });
+
+  if (endgameState?.finder || Object.keys(endgameState?.opportunities || {}).length > 0) {
+    state.endgame = endgameState;
+  }
 
   return state;
 }
@@ -544,6 +558,11 @@ function clearCurrentState() {
     $row.find("input[type='radio']").prop("checked", false);
     $row.find("input[type='checkbox']").prop("checked", false);
     $row.find("select").val("");
+    $row.find(".theory-order-input").val("");
+    $row.find(".theory-phase-select").val("main");
+    $row.find(".theory-order-input").prop("disabled", false);
+    $row.removeAttr("data-submit-order");
+    $row.attr("data-phase", "main");
     // Reset progress to NOT_SUBMITTED
     $row.attr("data-progress", "0");
     $row.removeClass("table-success table-danger");
@@ -555,6 +574,17 @@ function clearCurrentState() {
       $progressCell.empty().append(createTheoryProgressIndicator(theoryId, 0));
     }
   });
+  theorySubmissionCounter = 1;
+  endgameState = { finder: null, snapshotTimes: {}, opportunities: {} };
+  $("#endgame-finder-group input").prop("checked", false);
+  $("#endgame-body tr").forEach(($row) => {
+    const player = $row.attr("data-player");
+    $row.find(`input[name="endgame-choice-${player}"][value="none"]`).prop("checked", true);
+    $row.find(`input[name="endgame-locate-${player}"][value="wrong"]`).prop("checked", true);
+    $row.find(".endgame-theory-count").val(1);
+    updateEndgameChoiceUI($row);
+  });
+  $("#auto-score-tiebreaker").text("");
 }
 
 /** Undo the last action */
@@ -732,6 +762,7 @@ function restoreGameState(state) {
 
     // Restore theories
     const theories = state.theories || [];
+    let maxOrder = 0;
     for (let i = 0; i < theories.length; i++) {
       const theory = theories[i];
       // Make sure we have enough theory rows
@@ -752,6 +783,17 @@ function restoreGameState(state) {
       }
       if (theory.object) {
         $row.find(`input[name="${theoryId}-object"][value="${theory.object}"]`).prop("checked", true).trigger("change");
+      }
+      if (theory.order) {
+        $row.find(`#${theoryId}-submit-order`).val(theory.order);
+        maxOrder = Math.max(maxOrder, theory.order);
+      }
+      if (theory.phase) {
+        $row.find(`#${theoryId}-phase`).val(theory.phase);
+        $row.attr("data-phase", theory.phase);
+        if (theory.phase === "final") {
+          $row.find(`#${theoryId}-submit-order`).prop("disabled", true);
+        }
       }
 
       // Restore progress (new format)
@@ -785,6 +827,19 @@ function restoreGameState(state) {
         }
       }
     }
+
+    if (maxOrder > 0) {
+      theorySubmissionCounter = maxOrder + 1;
+    }
+
+    if (state.endgame) {
+      endgameState = state.endgame;
+      applyEndgameStateToModal();
+    } else {
+      endgameState = { finder: null, snapshotTimes: {}, opportunities: {} };
+    }
+
+    updateAutoScores();
 
     // Update time track after restoration
     if (typeof updateTimeTrack === "function") {
@@ -1237,6 +1292,12 @@ function toggleImageWhiteVariant(selector) {
 }
 
 let theoriesCounter = 0;
+let theorySubmissionCounter = 1;
+let endgameState = {
+  finder: null,
+  snapshotTimes: {},
+  opportunities: {},
+};
 
 // Theory progress states: 0 = Not submitted, 1 = Placed, 2 = Advanced, 3 = Approaching, 4 = Peer Review
 const THEORY_PROGRESS = {
@@ -1317,6 +1378,7 @@ function updateTheoryProgress(theoryId, progress) {
 
 /** Initializes the theories tracking table */
 function initializeTheoriesTable(playerColors, numSectors) {
+  theorySubmissionCounter = 1;
   // Add initial empty row
   addTheoryRow(playerColors, numSectors);
 
@@ -1324,6 +1386,7 @@ function initializeTheoriesTable(playerColors, numSectors) {
   $("#advance-theories-btn").on("click", () => {
     advanceAllTheories();
   });
+  updateAutoScores();
 }
 
 /** Advances all submitted theories one step toward peer review */
@@ -1377,14 +1440,30 @@ function advanceAllTheories() {
 }
 
 /** Adds a row to the theories table */
-function addTheoryRow(playerColors, numSectors) {
+function addTheoryRow(playerColors, numSectors, options = {}) {
+  const {
+    prefillPlayer = null,
+    phase = "main",
+    order = null,
+    markNew = true,
+  } = options;
   const theoryNum = theoriesCounter++;
   const theoryId = `theory${theoryNum}`;
 
   const theoryObjects = ["asteroid", "comet", "dwarf-planet", "gas-cloud"];
 
+  const $row = $("<tr>", {
+    id: theoryId,
+    class: "theory-row",
+    "data-progress": "0",
+    "data-phase": phase,
+  });
+  if (markNew) {
+    $row.attr("new", "true");
+  }
+
   $("#theories-body").append(
-    $("<tr>", { id: theoryId, class: "theory-row", new: "true", "data-progress": "0" }).append(
+    $row.append(
       // Player column
       $("<td>").append(
         BootstrapHtml.radioButtonGroup(
@@ -1402,6 +1481,28 @@ function addTheoryRow(playerColors, numSectors) {
         BootstrapHtml.dropdown(
           Array.fromRange(numSectors, (i) => i + 1),
           { id: `${theoryId}-sector`, onlyLabels: true, theory: theoryId }
+        )
+      ),
+      // Submitted column
+      $("<td>").append(
+        $("<div>", { class: "theory-submission" }).append(
+          $("<input>", {
+            type: "number",
+            id: `${theoryId}-submit-order`,
+            class: "form-control form-control-sm theory-order-input",
+            min: 1,
+            step: 1,
+            value: order ?? "",
+            theory: theoryId,
+          }),
+          $("<select>", {
+            id: `${theoryId}-phase`,
+            class: "form-select form-select-sm theory-phase-select",
+            theory: theoryId,
+          }).append(
+            $("<option>", { value: "main", selected: phase === "main" }).text("Main"),
+            $("<option>", { value: "final", selected: phase === "final" }).text("Final")
+          )
         )
       ),
       // Object column
@@ -1474,6 +1575,28 @@ function addTheoryRow(playerColors, numSectors) {
   // Toggle white image variant for object selection
   toggleImageWhiteVariant(`input[name="${theoryId}-object"]`);
 
+  const $orderInput = $(`#${theoryId}-submit-order`);
+  const $phaseSelect = $(`#${theoryId}-phase`);
+
+  function syncTheoryMeta() {
+    const selectedPhase = $phaseSelect.val() || "main";
+    $row.attr("data-phase", selectedPhase);
+    const orderVal = parseInt($orderInput.val());
+    if (Number.isFinite(orderVal)) {
+      $row.attr("data-submit-order", orderVal);
+    } else {
+      $row.removeAttr("data-submit-order");
+    }
+    $orderInput.prop("disabled", selectedPhase === "final");
+  }
+
+  if (prefillPlayer) {
+    $row
+      .find(`input[name="${theoryId}-player"][value="${prefillPlayer}"]`)
+      .prop("checked", true);
+  }
+  syncTheoryMeta();
+
   // When theory details are filled in, auto-set progress to PLACED if still NOT_SUBMITTED
   $(`[theory="${theoryId}"]`).on("change", (_event) => {
     const $row = $(`#${theoryId}`);
@@ -1493,6 +1616,10 @@ function addTheoryRow(playerColors, numSectors) {
 
       if (hasPlayer && hasSector && hasObject) {
         updateTheoryProgress(theoryId, THEORY_PROGRESS.PLACED);
+        if (!$orderInput.val()) {
+          $orderInput.val(theorySubmissionCounter++);
+          syncTheoryMeta();
+        }
       }
     }
 
@@ -1505,8 +1632,495 @@ function addTheoryRow(playerColors, numSectors) {
       $row.addClass("table-danger");
     }
 
+    syncTheoryMeta();
+    updateAutoScores();
     triggerAutoSave();
   });
+
+  $orderInput.on("change input", () => {
+    syncTheoryMeta();
+    updateAutoScores();
+    triggerAutoSave();
+  });
+
+  $phaseSelect.on("change", () => {
+    syncTheoryMeta();
+    updateAutoScores();
+    triggerAutoSave();
+  });
+}
+
+function getTheoryOrderValue(phase, order) {
+  if (phase === "final") return Number.MAX_SAFE_INTEGER;
+  if (!Number.isFinite(order)) return Number.MAX_SAFE_INTEGER - 1;
+  return order;
+}
+
+function collectTheoriesForScoring() {
+  const theories = [];
+  $(".theory-row").forEach(($row) => {
+    const theoryId = $row.getId();
+    const player = $row.find(`input[name="${theoryId}-player"]:checked`).attr("value");
+    const sector = parseInt($row.find(`#${theoryId}-sector`).val());
+    const object = $row.find(`input[name="${theoryId}-object"]:checked`).attr("value");
+    const result = $row.find(`input[name="${theoryId}-result"]:checked`).val() || "pending";
+    const order = parseInt($row.find(`#${theoryId}-submit-order`).val());
+    const phase = $row.find(`#${theoryId}-phase`).val() || "main";
+
+    if (!player || !Number.isFinite(sector) || !object) return;
+    theories.push({
+      player,
+      sector,
+      object,
+      result,
+      phase,
+      order,
+      orderValue: getTheoryOrderValue(phase, order),
+    });
+  });
+  return theories;
+}
+
+function computeLeaderBonuses(theories) {
+  const leaderCounts = {};
+  const bySector = {};
+  theories.forEach((theory) => {
+    if (theory.result !== "correct") return;
+    if (!bySector[theory.sector]) {
+      bySector[theory.sector] = [];
+    }
+    bySector[theory.sector].push(theory);
+  });
+
+  Object.values(bySector).forEach((sectorTheories) => {
+    let minOrder = Number.MAX_SAFE_INTEGER;
+    sectorTheories.forEach((theory) => {
+      minOrder = Math.min(minOrder, theory.orderValue);
+    });
+    sectorTheories
+      .filter((theory) => theory.orderValue === minOrder)
+      .forEach((theory) => {
+        leaderCounts[theory.player] = (leaderCounts[theory.player] || 0) + 1;
+      });
+  });
+
+  return leaderCounts;
+}
+
+function getPlanetXPoints() {
+  const points = {};
+  if (!endgameState?.finder) return points;
+  points[endgameState.finder] = 10;
+  Object.entries(endgameState.opportunities || {}).forEach(([player, opp]) => {
+    if (player === endgameState.finder) return;
+    if (opp.choice === "locate" && opp.locateCorrect) {
+      points[player] = Math.max(0, (opp.behind || 0) * 2);
+    }
+  });
+  return points;
+}
+
+function buildAutoScoreTable() {
+  const $body = $("#auto-score-body");
+  if (!$body.length) return;
+  $body.empty();
+  const players = currentGameSettings.playerColors || [];
+  players.forEach((color) => {
+    const accent = PLAYER_COLORS[color];
+    $body.append(
+      $("<tr>", { id: `auto-score-${color}` }).append(
+        $("<th>", { scope: "row" }).append(
+          $("<span>", { class: `badge bg-${accent} me-2` }).text(color.charAt(0).toUpperCase()),
+          $("<span>").text(color.toTitleCase())
+        ),
+        $("<td>", { "data-metric": "leader" }),
+        $("<td>", { "data-metric": "asteroid" }),
+        $("<td>", { "data-metric": "comet" }),
+        $("<td>", { "data-metric": "gas-cloud" }),
+        $("<td>", { "data-metric": "dwarf-planet" }),
+        $("<td>", { "data-metric": "planet-x" }),
+        $("<td>", { "data-metric": "total" })
+      )
+    );
+  });
+}
+
+function formatAutoScoreCell(points, count = null, perPoints = null) {
+  const $wrapper = $("<div>", { class: "auto-score-cell" });
+  $wrapper.append($("<div>", { class: "auto-score-points" }).text(points));
+  if (count != null && perPoints != null) {
+    $wrapper.append(
+      $("<div>", { class: "auto-score-meta" }).text(`${count} ×${perPoints}`)
+    );
+  }
+  return $wrapper;
+}
+
+function updateAutoScores() {
+  const $table = $("#auto-score-table");
+  if (!$table.length || !currentGameSettings.mode) return;
+
+  const players = currentGameSettings.playerColors || [];
+  const objectSettings = MODE_SETTINGS[currentGameSettings.mode].objects;
+  const theories = collectTheoriesForScoring();
+  const leaderCounts = computeLeaderBonuses(theories);
+  const planetPoints = getPlanetXPoints();
+
+  const perPlayer = {};
+  players.forEach((player) => {
+    perPlayer[player] = {
+      leader: leaderCounts[player] || 0,
+      objectCounts: {},
+      planetX: planetPoints[player] || 0,
+      total: 0,
+    };
+    Object.keys(objectSettings).forEach((object) => {
+      if (objectSettings[object].points != null) {
+        perPlayer[player].objectCounts[object] = 0;
+      }
+    });
+  });
+
+  theories.forEach((theory) => {
+    if (theory.result !== "correct") return;
+    if (!perPlayer[theory.player]) return;
+    if (perPlayer[theory.player].objectCounts[theory.object] != null) {
+      perPlayer[theory.player].objectCounts[theory.object] += 1;
+    }
+  });
+
+  players.forEach((player) => {
+    const row = $(`#auto-score-${player}`);
+    if (!row.length) return;
+    const leader = perPlayer[player].leader;
+    row.find('[data-metric="leader"]').empty().append(formatAutoScoreCell(leader));
+
+    let total = leader;
+    Object.entries(perPlayer[player].objectCounts).forEach(([object, count]) => {
+      const points = objectSettings[object]?.points || 0;
+      const cellPoints = count * points;
+      total += cellPoints;
+      row
+        .find(`[data-metric="${object}"]`)
+        .empty()
+        .append(formatAutoScoreCell(cellPoints, count, points));
+    });
+
+    const planetX = perPlayer[player].planetX || 0;
+    total += planetX;
+    row.find('[data-metric="planet-x"]').empty().append(formatAutoScoreCell(planetX));
+    row
+      .find('[data-metric="total"]')
+      .empty()
+      .append($("<div>", { class: "auto-score-total" }).text(total));
+    perPlayer[player].total = total;
+  });
+
+  updateAutoScoreTiebreaker(perPlayer);
+}
+
+function updateAutoScoreTiebreaker(perPlayer) {
+  const $summary = $("#auto-score-tiebreaker");
+  if (!$summary.length) return;
+  const players = Object.keys(perPlayer);
+  if (players.length === 0) {
+    $summary.text("");
+    return;
+  }
+
+  const maxTotal = Math.max(...players.map((p) => perPlayer[p].total || 0));
+  const topPlayers = players.filter((p) => perPlayer[p].total === maxTotal);
+  if (topPlayers.length === 1) {
+    $summary.text(`${topPlayers[0].toTitleCase()} leads with ${maxTotal} points.`);
+    return;
+  }
+
+  const maxPlanet = Math.max(...topPlayers.map((p) => perPlayer[p].planetX || 0));
+  const planetLeaders = topPlayers.filter((p) => (perPlayer[p].planetX || 0) === maxPlanet);
+  if (planetLeaders.length === 1) {
+    $summary.text(
+      `Tie at ${maxTotal} points. ${planetLeaders[0].toTitleCase()} wins on Planet X points (${maxPlanet}).`
+    );
+    return;
+  }
+
+  const maxLeader = Math.max(...planetLeaders.map((p) => perPlayer[p].leader || 0));
+  const leaderWinners = planetLeaders.filter((p) => (perPlayer[p].leader || 0) === maxLeader);
+  if (leaderWinners.length === 1) {
+    $summary.text(
+      `Tie at ${maxTotal} points. ${leaderWinners[0].toTitleCase()} wins on first-theory bonuses (${maxLeader}).`
+    );
+    return;
+  }
+
+  $summary.text(`Tie at ${maxTotal} points remains after tie-breakers.`);
+}
+
+function getEndgameAllowance(behind) {
+  if (behind >= 1 && behind <= 3) return 1;
+  if (behind >= 4 && behind <= 5) return 2;
+  return 0;
+}
+
+function initializeEndgameModal(playerColors) {
+  const $finderGroup = $("#endgame-finder-group");
+  const $body = $("#endgame-body");
+  if (!$finderGroup.length || !$body.length) return;
+
+  $finderGroup.empty();
+  $body.empty();
+
+  $finderGroup.append(
+    BootstrapHtml.radioButtonGroup(
+      "endgame-finder",
+      playerColors.map((color) => ({
+        value: color,
+        accent: PLAYER_COLORS[color],
+        content: color.toTitleCase(),
+      })),
+      { elementAccent: "secondary" }
+    )
+  );
+
+  playerColors.forEach((color) => {
+    const accent = PLAYER_COLORS[color];
+    const $row = $("<tr>", { "data-player": color }).append(
+      $("<th>", { scope: "row" }).append(
+        $("<span>", { class: `badge bg-${accent} me-2` }).text(color.charAt(0).toUpperCase()),
+        $("<span>").text(color.toTitleCase())
+      ),
+      $("<td>", { class: "endgame-time", text: "—" }),
+      $("<td>", { class: "endgame-behind", text: "—" }),
+      $("<td>", { class: "endgame-allowance" }).append(
+        $("<span>", { class: "badge bg-secondary" }).text("Unknown")
+      ),
+      $("<td>").append(
+        $("<div>", { class: "btn-group btn-group-sm endgame-choice-group", role: "group" }).append(
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `endgame-choice-${color}`,
+            id: `endgame-${color}-none`,
+            value: "none",
+            checked: true,
+          }),
+          $("<label>", { class: "btn btn-outline-secondary", for: `endgame-${color}-none` }).text("None"),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `endgame-choice-${color}`,
+            id: `endgame-${color}-theory`,
+            value: "theory",
+          }),
+          $("<label>", { class: "btn btn-outline-primary", for: `endgame-${color}-theory` }).text("Theories"),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `endgame-choice-${color}`,
+            id: `endgame-${color}-locate`,
+            value: "locate",
+          }),
+          $("<label>", { class: "btn btn-outline-success", for: `endgame-${color}-locate` }).text("Locate")
+        )
+      ),
+      $("<td>").append(
+        $("<input>", {
+          type: "number",
+          class: "form-control form-control-sm endgame-theory-count",
+          min: 1,
+          max: 2,
+          value: 1,
+        })
+      ),
+      $("<td>").append(
+        $("<div>", { class: "btn-group btn-group-sm endgame-locate-group", role: "group" }).append(
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `endgame-locate-${color}`,
+            id: `endgame-${color}-locate-wrong`,
+            value: "wrong",
+            checked: true,
+          }),
+          $("<label>", { class: "btn btn-outline-secondary", for: `endgame-${color}-locate-wrong` }).text("Wrong"),
+          $("<input>", {
+            type: "radio",
+            class: "btn-check",
+            name: `endgame-locate-${color}`,
+            id: `endgame-${color}-locate-correct`,
+            value: "correct",
+          }),
+          $("<label>", { class: "btn btn-outline-success", for: `endgame-${color}-locate-correct` }).text("Correct")
+        )
+      )
+    );
+
+    $body.append($row);
+  });
+
+  $("#endgame-refresh-times").off("click").on("click", refreshEndgameModal);
+  $("#endgame-apply-btn").off("click").on("click", applyEndgameModal);
+  $("#endgame-modal").off("show.bs.modal").on("show.bs.modal", refreshEndgameModal);
+  $finderGroup.off("change").on("change", () => refreshEndgameModal(true));
+  $("#endgame-body")
+    .off("change.endgame-choice")
+    .on("change.endgame-choice", 'input[name^="endgame-choice-"]', function () {
+      const $row = $(this).closest("tr");
+      updateEndgameChoiceUI($row);
+    });
+}
+
+function refreshEndgameModal(keepChoices = false) {
+  const playerTimes = getPlayerTimesFromMoves();
+  const finder = getSelectedRadio("endgame-finder");
+  $("#endgame-snapshot-note").text("Using current time track snapshot.");
+
+  $("#endgame-body tr").forEach(($row) => {
+    const player = $row.attr("data-player");
+    const time = playerTimes[player] ?? 0;
+    const behind = finder ? Math.max(0, (playerTimes[finder] ?? 0) - time) : null;
+    const allowance = behind != null ? getEndgameAllowance(behind) : 0;
+
+    $row.toggleClass("endgame-row-finder", finder === player);
+    $row.find(".endgame-time").text(time);
+    $row.find(".endgame-behind").text(behind != null ? behind : "—");
+
+    const $allowanceBadge = $row.find(".endgame-allowance .badge");
+    if (!finder) {
+      $allowanceBadge.attr("class", "badge bg-secondary").text("Select finder");
+    } else if (player === finder) {
+      $allowanceBadge.attr("class", "badge bg-success").text("Finder");
+    } else if (allowance === 1) {
+      $allowanceBadge.attr("class", "badge bg-primary").text("1 theory or locate");
+    } else if (allowance === 2) {
+      $allowanceBadge.attr("class", "badge bg-primary").text("Up to 2 theories");
+    } else {
+      $allowanceBadge.attr("class", "badge bg-secondary").text("No final action");
+    }
+
+    const allowActions = allowance > 0 && player !== finder;
+    $row.find(".endgame-choice-group").toggleClass("endgame-disabled", !allowActions);
+    $row.find(".endgame-locate-group").toggleClass("endgame-disabled", !allowActions);
+
+    const $theoryCount = $row.find(".endgame-theory-count");
+    $theoryCount.prop("max", allowance || 1);
+    if (!allowActions || !keepChoices) {
+      $row.find(`input[name="endgame-choice-${player}"][value="none"]`).prop("checked", true);
+      $row.find(`input[name="endgame-locate-${player}"][value="wrong"]`).prop("checked", true);
+      $theoryCount.val(Math.min(allowance || 1, 2));
+    } else {
+      const currentVal = parseInt($theoryCount.val()) || 1;
+      if (currentVal > allowance) {
+        $theoryCount.val(allowance);
+      }
+    }
+
+    updateEndgameChoiceUI($row);
+  });
+
+  applyEndgameStateToModal();
+}
+
+function updateEndgameChoiceUI($row) {
+  const player = $row.attr("data-player");
+  const choice = $row.find(`input[name="endgame-choice-${player}"]:checked`).val() || "none";
+  const $theoryCount = $row.find(".endgame-theory-count");
+  const $locateGroup = $row.find(".endgame-locate-group");
+
+  $theoryCount.toggleClass("d-none", choice !== "theory");
+  $locateGroup.toggleClass("d-none", choice !== "locate");
+  $theoryCount.prop("disabled", choice !== "theory");
+}
+
+function applyEndgameStateToModal() {
+  if (!endgameState) return;
+  const finder = endgameState.finder;
+  if (finder) {
+    $(`input[name="endgame-finder"][value="${finder}"]`).prop("checked", true);
+  }
+  $("#endgame-body tr").forEach(($row) => {
+    const player = $row.attr("data-player");
+    const opp = endgameState.opportunities?.[player];
+    if (!opp) return;
+    const choice = opp.choice === "finder" ? "none" : opp.choice;
+    $row.find(`input[name="endgame-choice-${player}"][value="${choice}"]`).prop("checked", true);
+    if (choice === "theory") {
+      $row.find(".endgame-theory-count").val(opp.theoryCount || 1);
+    }
+    if (choice === "locate") {
+      const locVal = opp.locateCorrect ? "correct" : "wrong";
+      $row.find(`input[name="endgame-locate-${player}"][value="${locVal}"]`).prop("checked", true);
+    }
+    updateEndgameChoiceUI($row);
+  });
+}
+
+function applyEndgameModal() {
+  const finder = getSelectedRadio("endgame-finder");
+  if (!finder) {
+    showSkyMapToast("Select the player who located Planet X.");
+    return;
+  }
+
+  const playerTimes = getPlayerTimesFromMoves();
+  const opportunities = {};
+  let addedFinalRows = 0;
+
+  $("#endgame-body tr").forEach(($row) => {
+    const player = $row.attr("data-player");
+    const behind = Math.max(0, (playerTimes[finder] ?? 0) - (playerTimes[player] ?? 0));
+    const allowance = getEndgameAllowance(behind);
+    if (player === finder) {
+      opportunities[player] = { behind, allowance, choice: "finder" };
+      return;
+    }
+    const choice = $row.find(`input[name="endgame-choice-${player}"]:checked`).val() || "none";
+    const theoryCount = Math.min(
+      allowance || 0,
+      parseInt($row.find(".endgame-theory-count").val()) || 0
+    );
+    const locateCorrect =
+      $row.find(`input[name="endgame-locate-${player}"]:checked`).val() === "correct";
+
+    opportunities[player] = {
+      behind,
+      allowance,
+      choice,
+      theoryCount,
+      locateCorrect,
+    };
+
+    if (choice === "theory" && theoryCount > 0) {
+      const numSectors = MODE_SETTINGS[currentGameSettings.mode].numSectors;
+      for (let i = 0; i < theoryCount; i++) {
+        addTheoryRow(currentGameSettings.playerColors, numSectors, {
+          prefillPlayer: player,
+          phase: "final",
+          markNew: false,
+        });
+        addedFinalRows++;
+      }
+    }
+  });
+
+  endgameState = {
+    finder,
+    snapshotTimes: playerTimes,
+    opportunities,
+  };
+
+  if (addedFinalRows > 0) {
+    const numSectors = MODE_SETTINGS[currentGameSettings.mode].numSectors;
+    addTheoryRow(currentGameSettings.playerColors, numSectors);
+  }
+
+  updateAutoScores();
+  triggerAutoSave();
+
+  const modalEl = document.getElementById("endgame-modal");
+  if (modalEl) {
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+  }
 }
 
 /** Starts the game by initializing the page with the given game settings. */
@@ -1724,9 +2338,14 @@ function startGame(gameSettings) {
 
   // initialize theories table
   initializeTheoriesTable(playerColors, numSectors);
+  initializeEndgameModal(playerColors);
 
   // set the global settings
   Object.assign(currentGameSettings, gameSettings);
+
+  buildAutoScoreTable();
+  endgameState = { finder: null, snapshotTimes: {}, opportunities: {} };
+  updateAutoScores();
 
   // initialize moves table
   addMoveRow();
@@ -1742,6 +2361,29 @@ function startGame(gameSettings) {
 const MOVE_ROW_CLASS = "move-row";
 
 let movesCounter = 0;
+function getPlayerTimesFromMoves() {
+  const playerTimes = {};
+  if (!currentGameSettings.playerColors) return playerTimes;
+  for (const color of currentGameSettings.playerColors) {
+    playerTimes[color] = 0;
+  }
+
+  $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
+    const moveId = $row.getId();
+    const player = $row
+      .find(`input[name="${moveId}-player"]:checked`)
+      .attr("value");
+    if (player == null) return;
+    const $timeCostNum = $row.find(`#${moveId}-time-num`);
+    const timeCost = parseInt($timeCostNum.text()) || 0;
+    if (player in playerTimes) {
+      playerTimes[player] += timeCost;
+    }
+  });
+
+  return playerTimes;
+}
+
 /** Adds a row to the moves table. */
 function addMoveRow() {
   const numSectors = MODE_SETTINGS[currentGameSettings.mode].numSectors;
@@ -2001,27 +2643,7 @@ function addMoveRow() {
 
   function updateTimeTrack() {
     // Calculate cumulative time for each player from move rows
-    const playerTimes = {};
-    for (const color of currentGameSettings.playerColors) {
-      playerTimes[color] = 0;
-    }
-
-    $(`.${MOVE_ROW_CLASS}`).forEach(($row) => {
-      const moveId = $row.getId();
-      // Find selected player
-      const player = $row
-        .find(`input[name="${moveId}-player"]:checked`)
-        .attr("value");
-      if (player == null) return;
-
-      // Get the time cost for this move
-      const $timeCostNum = $row.find(`#${moveId}-time-num`);
-      const timeCost = parseInt($timeCostNum.text()) || 0;
-
-      if (player in playerTimes) {
-        playerTimes[player] += timeCost;
-      }
-    });
+    const playerTimes = getPlayerTimesFromMoves();
 
     // Find player furthest behind (lowest time = next turn)
     let minTime = Infinity;

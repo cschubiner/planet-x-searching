@@ -105,6 +105,67 @@ img.time {
   color: var(--bs-body-color);
 }
 
+.theory-submission {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 110px;
+}
+
+.theory-submission input,
+.theory-submission select {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.theory-submission .form-select {
+  padding-right: 1.75rem;
+}
+
+.auto-score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.auto-score-points {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.auto-score-meta {
+  font-size: 0.7rem;
+  color: var(--px-text-muted);
+}
+
+.auto-score-total {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.endgame-card {
+  background: var(--px-surface);
+  border: 1px solid var(--px-border-subtle);
+}
+
+.endgame-row-finder {
+  background: rgba(25, 135, 84, 0.12);
+}
+
+[data-bs-theme="dark"] .endgame-row-finder {
+  background: rgba(25, 135, 84, 0.22);
+}
+
+.endgame-choice-group .btn {
+  min-width: 70px;
+}
+
+.endgame-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 #hints-table > * > :first-child > :first-child {
   /* First cell: full border */
   border-width: 1px;
