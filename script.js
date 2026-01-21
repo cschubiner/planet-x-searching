@@ -326,6 +326,9 @@ function resetCircularBoardState() {
   circularBoardState.selectedSector = null;
   pendingTheorySectors = [];
   isTheoryModalActive = false;
+  skyMapInputMode = null;
+  skyMapSurveyStart = null;
+  skyMapLockedRowId = null;
 
   $("#circular-board .sector, #circular-board .player-pawn").remove();
   $("#center-sector-num").text("");
@@ -333,6 +336,7 @@ function resetCircularBoardState() {
   $("#visible-sky-indicator").removeClass("active").attr("style", "");
   $("#circular-board").css("transform", "rotate(0deg)");
   $("#toggle-visible-sky").addClass("active");
+  $("#sky-map-input-status").text("Sky map input: Off");
 }
 
 function resetGameUI({ showSettings = true } = {}) {
@@ -1963,9 +1967,13 @@ function addMoveRow() {
     // if this is a new row, add another row since this one is now changed
     const $row = $(`#${moveId}`);
     if ($row.attr("new")) {
-      $row.attr("new", null);
-      // add a new row after this one
-      addMoveRow();
+      if (skyMapLockedRowId === moveId) {
+        // defer row creation until sky map selection completes
+      } else {
+        $row.attr("new", null);
+        // add a new row after this one
+        addMoveRow();
+      }
     }
 
     // calculate the time cost for this action
@@ -3074,6 +3082,9 @@ let circularBoardState = {
 };
 let pendingTheorySectors = [];
 let isTheoryModalActive = false;
+let skyMapInputMode = null;
+let skyMapSurveyStart = null;
+let skyMapLockedRowId = null;
 
 function enqueueTheoryPhases(sectors) {
   const next = sectors.filter((sector) => !pendingTheorySectors.includes(sector));
@@ -3257,6 +3268,8 @@ function setupCircularBoardEvents() {
       $("#center-info").addClass("active");
       $("#center-sun").hide();
     }
+
+    handleSkyMapSectorInput(sector);
   });
 
   // Rotation buttons
@@ -3292,6 +3305,220 @@ function setupCircularBoardEvents() {
       circularBoardState.showVisibleSky = $(this).hasClass("active");
       updateVisibleSky();
     });
+
+  setupSkyMapInputControls();
+}
+
+function setupSkyMapInputControls() {
+  $("#sky-map-mode-survey")
+    .off("click.skyMap")
+    .on("click.skyMap", () => {
+      setSkyMapInputMode("survey");
+    });
+  $("#sky-map-mode-target")
+    .off("click.skyMap")
+    .on("click.skyMap", () => {
+      setSkyMapInputMode("target");
+    });
+}
+
+function setSkyMapInputMode(mode) {
+  skyMapInputMode = mode;
+  $("#sky-map-mode-survey").toggleClass("active", mode === "survey");
+  $("#sky-map-mode-target").toggleClass("active", mode === "target");
+  $("#sky-map-mode-survey").toggleClass("btn-primary", mode === "survey");
+  $("#sky-map-mode-survey").toggleClass("btn-outline-primary", mode !== "survey");
+  $("#sky-map-mode-target").toggleClass("btn-primary", mode === "target");
+  $("#sky-map-mode-target").toggleClass("btn-outline-primary", mode !== "target");
+  skyMapSurveyStart = null;
+  clearSkyMapHighlights();
+  updateSkyMapInputStatus();
+}
+
+function updateSkyMapInputStatus() {
+  const $status = $("#sky-map-input-status");
+  if (!skyMapInputMode) {
+    $status.text("Sky map input: Off");
+    return;
+  }
+  if (skyMapInputMode === "target") {
+    $status.text("Sky map input: Target (tap a sector)");
+    return;
+  }
+  if (skyMapSurveyStart == null) {
+    $status.text("Sky map input: Survey (tap start sector, then end)");
+  } else {
+    $status.text(`Sky map input: Survey (start ${skyMapSurveyStart}, tap end sector)`);
+  }
+}
+
+function getActiveMoveRow() {
+  return $("#moves-body tr").last();
+}
+
+function clearSkyMapHighlights() {
+  $(".sector").removeClass(
+    "sky-map-target sky-map-survey-start sky-map-survey-end"
+  );
+}
+
+function lockSkyMapRow($row) {
+  if (!skyMapLockedRowId && $row?.length) {
+    skyMapLockedRowId = $row.getId();
+  }
+}
+
+function finalizeSkyMapRow() {
+  if (!skyMapLockedRowId) return;
+  const $row = $(`#${skyMapLockedRowId}`);
+  if ($row.length && $row.attr("new")) {
+    $row.attr("new", null);
+    addMoveRow();
+  }
+  skyMapLockedRowId = null;
+}
+
+function showSkyMapToast(message) {
+  let $container = $("#sky-map-toast-container");
+  if ($container.length === 0) {
+    $container = $("<div>", {
+      id: "sky-map-toast-container",
+      class: "toast-container position-fixed bottom-0 end-0 p-3",
+    });
+    $("body").append($container);
+  }
+  const toastId = `sky-map-toast-${Date.now()}`;
+  const $toast = $(`
+    <div id="${toastId}" class="toast text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  `);
+  $container.append($toast);
+  const toast = new bootstrap.Toast($toast.get(0), { delay: 2500 });
+  toast.show();
+  $toast.on("hidden.bs.toast", () => $toast.remove());
+}
+
+function showSkyMapModeModal(sector) {
+  const modalHtml = `
+    <div class="modal fade" id="sky-map-mode-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Choose Sky Map Action</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            Select whether this tap should record a Survey or Target.
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="sky-map-modal-survey" class="btn btn-primary">Survey</button>
+            <button type="button" id="sky-map-modal-target" class="btn btn-outline-primary">Target</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  $("#sky-map-mode-modal").remove();
+  $("body").append(modalHtml);
+  const modal = new bootstrap.Modal(document.getElementById("sky-map-mode-modal"));
+  modal.show();
+
+  $("#sky-map-modal-survey").on("click", () => {
+    modal.hide();
+    setSkyMapInputMode("survey");
+    handleSkyMapSectorInput(sector);
+  });
+  $("#sky-map-modal-target").on("click", () => {
+    modal.hide();
+    setSkyMapInputMode("target");
+    handleSkyMapSectorInput(sector);
+  });
+
+  $("#sky-map-mode-modal").on("hidden.bs.modal", function () {
+    $(this).remove();
+  });
+}
+
+function handleSkyMapSectorInput(sector) {
+  const mode = skyMapInputMode;
+  if (!mode) {
+    showSkyMapModeModal(sector);
+    return;
+  }
+
+  const $row = getActiveMoveRow();
+  if ($row.length === 0) return;
+  lockSkyMapRow($row);
+  const moveId = $row.getId();
+
+  const $actionInput = $row.find(
+    `input[name="${moveId}-action"][value="${mode}"]`
+  );
+  if ($actionInput.length && !$actionInput.prop("checked")) {
+    $actionInput.prop("checked", true).trigger("change");
+  }
+
+  if (mode === "target") {
+    const $targetSelect = $row.find('[action="target"] select');
+    const $option = $targetSelect.find(`option[value="${sector}"]`);
+    if ($option.length === 0 || $option.prop("disabled")) {
+      showSkyMapToast("That sector cannot be targeted.");
+      return;
+    }
+    $targetSelect.val(String(sector)).trigger("change");
+    clearSkyMapHighlights();
+    $(`.sector[data-sector="${sector}"]`).addClass("sky-map-target");
+    updateSkyMapInputStatus();
+    triggerAutoSave();
+    finalizeSkyMapRow();
+    return;
+  }
+
+  const $objectInput = $row.find(
+    `input[name="${moveId}-action-survey-object"]:checked`
+  );
+  if ($objectInput.length === 0) {
+    showSkyMapToast("Select a survey object in the active row first.");
+    return;
+  }
+
+  const $startSelect = $row.find(
+    `#${moveId}-action-survey-sector-start`
+  );
+  if (skyMapSurveyStart == null) {
+    const $option = $startSelect.find(`option[value="${sector}"]`);
+    if ($option.length === 0 || $option.prop("disabled")) {
+      showSkyMapToast("That sector can't be a survey start for this object.");
+      return;
+    }
+    $startSelect.val(String(sector)).trigger("change");
+    skyMapSurveyStart = sector;
+    clearSkyMapHighlights();
+    $(`.sector[data-sector="${sector}"]`).addClass("sky-map-survey-start");
+    updateSkyMapInputStatus();
+    triggerAutoSave();
+    return;
+  }
+
+  const $endSelect = $row.find(`#${moveId}-action-survey-sector-end`);
+  const $option = $endSelect.find(`option[value="${sector}"]`);
+  if ($option.length === 0 || $option.prop("disabled")) {
+    showSkyMapToast("End sector must be within the visible sky range.");
+    return;
+  }
+  $endSelect.val(String(sector)).trigger("change");
+  clearSkyMapHighlights();
+  $(`.sector[data-sector="${skyMapSurveyStart}"]`).addClass("sky-map-survey-start");
+  $(`.sector[data-sector="${sector}"]`).addClass("sky-map-survey-end");
+  skyMapSurveyStart = null;
+  updateSkyMapInputStatus();
+  triggerAutoSave();
+  finalizeSkyMapRow();
 }
 
 /** Apply rotation to the board */

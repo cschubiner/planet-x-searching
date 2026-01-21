@@ -254,6 +254,18 @@ textarea {
   opacity: 1;
 }
 
+.sector.sky-map-target {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.6);
+}
+
+.sector.sky-map-survey-start {
+  box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.6);
+}
+
+.sector.sky-map-survey-end {
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.6);
+}
+
 /* First-time user highlight animation */
 @keyframes pulse-highlight {
   0% {

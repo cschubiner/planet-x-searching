@@ -442,18 +442,25 @@
                    data-bs-placement="right"
                    title="Visual representation of the sky sectors. Click a sector to see details. Hover to highlight adjacent sectors. The visible sky is always half the sectors, starting at the Earth arrow (furthest-back player) and extending clockwise."></i>
               </h3>
-              <div class="btn-group btn-group-sm">
-                <button type="button" id="rotate-board-left" class="btn btn-outline-secondary" title="Rotate left">
-                  <i class="bi bi-arrow-counterclockwise"></i>
-                </button>
-                <button type="button" id="rotate-board-right" class="btn btn-outline-secondary" title="Rotate right">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" id="toggle-visible-sky" class="btn btn-outline-info active" title="Toggle visible sky highlight">
-                  <i class="bi bi-eye"></i>
-                </button>
+              <div class="d-flex align-items-center gap-2">
+                <div class="btn-group btn-group-sm">
+                  <button type="button" id="rotate-board-left" class="btn btn-outline-secondary" title="Rotate left">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                  </button>
+                  <button type="button" id="rotate-board-right" class="btn btn-outline-secondary" title="Rotate right">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                  <button type="button" id="toggle-visible-sky" class="btn btn-outline-info active" title="Toggle visible sky highlight">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Sky map input mode">
+                  <button type="button" id="sky-map-mode-survey" class="btn btn-outline-primary">Survey</button>
+                  <button type="button" id="sky-map-mode-target" class="btn btn-outline-primary">Target</button>
+                </div>
               </div>
             </div>
+            <div id="sky-map-input-status" class="text-muted small text-end mb-2">Sky map input: Off</div>
             <div id="circular-board-container">
               <div id="circular-board">
                 <div id="board-center">
