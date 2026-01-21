@@ -1445,7 +1445,7 @@ function startGame(gameSettings) {
       if (object === "comet") {
         // special case: only put hints in prime number sectors
         if (!isPrime(sector)) {
-          $row.append($("<td>"));
+          $row.append($("<td>", { "data-sector": sector }));
           return;
         }
       }
@@ -1495,9 +1495,31 @@ function startGame(gameSettings) {
     .on("resize.hintsSticky", updateHintsStickyColumns);
 
   // allow recentering the sectors by clicking a header
+  // Track mousedown position to distinguish clicks from scroll drags
+  let mouseDownPos = null;
+  const DRAG_THRESHOLD = 5; // pixels of movement to consider it a drag
+
+  $("#sectors-head")
+    .off("mousedown.sectorShift")
+    .on("mousedown.sectorShift", "th[data-sector]", (event) => {
+      mouseDownPos = { x: event.clientX, y: event.clientY };
+    });
+
   $("#sectors-head")
     .off("click.sectorShift", "th[data-sector]")
     .on("click.sectorShift", "th[data-sector]", (event) => {
+      // Check if this was a drag (scroll) rather than a click
+      if (mouseDownPos) {
+        const dx = Math.abs(event.clientX - mouseDownPos.x);
+        const dy = Math.abs(event.clientY - mouseDownPos.y);
+        if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+          // This was a drag/scroll, not a click
+          mouseDownPos = null;
+          return;
+        }
+      }
+      mouseDownPos = null;
+
       const sector = Number($(event.currentTarget).attr("data-sector"));
       if (Number.isFinite(sector)) {
         shiftHintsTableToCenter(sector);
@@ -3353,7 +3375,17 @@ function updateSkyMapInputStatus() {
 }
 
 function getActiveMoveRow() {
-  return $("#moves-body tr").last();
+  // Find the last row that has at least one selection (player or action checked)
+  const $rows = $("#moves-body tr");
+  for (let i = $rows.length - 1; i >= 0; i--) {
+    const $row = $rows.eq(i);
+    // Check if any radio button is checked in this row
+    if ($row.find('input[type="radio"]:checked').length > 0) {
+      return $row;
+    }
+  }
+  // Fallback to last row if no selections found
+  return $rows.last();
 }
 
 function clearSkyMapHighlights() {

@@ -129,6 +129,44 @@ test("Cannot research twice in a row", async ({ page }) => {
   await expect(page.locator(`#${secondId}-action-research`)).toBeDisabled();
 });
 
+test("Comet buttons stay in prime sectors after column reorientation", async ({ page }) => {
+  await startGame(page);
+
+  const primeSectors = [2, 3, 5, 7, 11];
+  const nonPrimeSectors = [1, 4, 6, 8, 9, 10, 12];
+
+  // Verify initial state: comet buttons only in prime sectors
+  for (const sector of primeSectors) {
+    await expect(page.locator(`#comet-sector${sector}-yes`)).toHaveCount(1);
+  }
+  for (const sector of nonPrimeSectors) {
+    await expect(page.locator(`#comet-sector${sector}-yes`)).toHaveCount(0);
+  }
+
+  // Click sector 6 header to trigger column reorientation
+  await page.click('th[data-sector="6"]');
+
+  // After reorientation, comet buttons should still only be in prime sectors
+  // The buttons should still exist and be functional
+  for (const sector of primeSectors) {
+    const btn = page.locator(`#comet-sector${sector}-yes`);
+    await expect(btn).toHaveCount(1);
+    // Verify the button is inside a cell with the correct data-sector attribute
+    const cell = page.locator(`td[data-sector="${sector}"] #comet-sector${sector}-yes`);
+    await expect(cell).toHaveCount(1);
+  }
+
+  // Non-prime sectors should still have no comet buttons
+  for (const sector of nonPrimeSectors) {
+    await expect(page.locator(`#comet-sector${sector}-yes`)).toHaveCount(0);
+  }
+
+  // Verify we can still interact with a comet button after reorientation
+  const cometBtn = page.locator("#comet-sector5-yes");
+  await cometBtn.click();
+  await expect(cometBtn).toHaveClass(/active/);
+});
+
 test("Target action limited to two per player", async ({ page }) => {
   await startGame(page);
 
