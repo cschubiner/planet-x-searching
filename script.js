@@ -3402,6 +3402,67 @@ function showSkyMapToast(message) {
   $toast.on("hidden.bs.toast", () => $toast.remove());
 }
 
+function showSurveyObjectToast(sector) {
+  const $row = getActiveMoveRow();
+  if ($row.length === 0) return;
+  const moveId = $row.getId();
+  const objectOptions = [
+    "asteroid",
+    "dwarf-planet",
+    "comet",
+    "gas-cloud",
+    "truly-empty",
+  ];
+
+  let $container = $("#sky-map-toast-container");
+  if ($container.length === 0) {
+    $container = $("<div>", {
+      id: "sky-map-toast-container",
+      class: "toast-container position-fixed bottom-0 end-0 p-3",
+    });
+    $("body").append($container);
+  }
+
+  $("#sky-map-survey-toast").remove();
+  const $buttons = $("<div>", { class: "d-flex flex-wrap gap-2" }).append(
+    objectOptions.map((object) =>
+      $("<button>", {
+        type: "button",
+        class: "btn btn-outline-secondary btn-sm sky-map-object-btn",
+        "data-object": object,
+        title: object.toTitleCase(),
+      }).append(createObjectImage(object))
+    )
+  );
+
+  const $toast = $(`
+    <div id="sky-map-survey-toast" class="toast text-bg-info border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          <div class="fw-semibold mb-2">Choose survey object</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  `);
+  $toast.find(".toast-body").append($buttons);
+  $container.append($toast);
+
+  $toast.on("click", ".sky-map-object-btn", (event) => {
+    const object = $(event.currentTarget).attr("data-object");
+    if (!object) return;
+    $row
+      .find(`input[name="${moveId}-action-survey-object"][value="${object}"]`)
+      .prop("checked", true)
+      .trigger("change");
+    bootstrap.Toast.getOrCreateInstance($toast.get(0)).hide();
+    handleSkyMapSectorInput(sector);
+  });
+
+  const toast = new bootstrap.Toast($toast.get(0), { delay: 5000 });
+  toast.show();
+}
+
 function showSkyMapModeModal(sector) {
   const modalHtml = `
     <div class="modal fade" id="sky-map-mode-modal" tabindex="-1">
@@ -3483,7 +3544,7 @@ function handleSkyMapSectorInput(sector) {
     `input[name="${moveId}-action-survey-object"]:checked`
   );
   if ($objectInput.length === 0) {
-    showSkyMapToast("Select a survey object in the active row first.");
+    showSurveyObjectToast(sector);
     return;
   }
 

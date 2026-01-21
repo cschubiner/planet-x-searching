@@ -266,6 +266,15 @@ textarea {
   box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.6);
 }
 
+.sky-map-object-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
 /* First-time user highlight animation */
 @keyframes pulse-highlight {
   0% {
